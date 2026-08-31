@@ -81,7 +81,9 @@ export default function TipPage() {
             <input
               type="checkbox"
               checked={consentGiven}
-              readOnly
+              onChange={() => {
+                if (!consentGiven) setShowModal(true);
+              }}
               className="mt-0.5 w-5 h-5 rounded border-gray-300 accent-[#7C86F0] cursor-pointer flex-shrink-0"
             />
             <span
