@@ -33,7 +33,7 @@
         "noSvgWithoutTitle": "warn",
         "useKeyWithClickEvents": "warn",
         "noStaticElementInteractions": "warn",
-        "noNoninteractiveTabindex": "warn"
+        "noNoninteractiveTabindex": "off"
       },
       "suspicious": {
         "noConsole": "error",

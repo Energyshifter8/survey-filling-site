@@ -1,6 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const consentClauses = [
   "Энэхүү судалгаанд оролцох нь таны сайн дурын үйлдэл бөгөөд та хэзээ ч судалгаагаа цуцлах эрхтэй.",
@@ -11,66 +20,55 @@ const consentClauses = [
 ];
 
 interface ConsentModalProps {
+  open: boolean;
   onAccept: () => void;
   onDecline: () => void;
 }
 
-export default function ConsentModal({ onAccept, onDecline }: ConsentModalProps) {
+export default function ConsentModal({ open, onAccept, onDecline }: ConsentModalProps) {
   const [expanded, setExpanded] = useState(false);
 
+  const visibleClauses = expanded ? consentClauses : consentClauses.slice(0, 3);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-xl max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-2">
-          <h2 className="text-xl font-bold text-gray-900">Зөвшөөрөл өгөх</h2>
-          <button
-            onClick={onDecline}
-            className="text-gray-400 hover:text-gray-600 transition-colors text-2xl leading-none"
-            aria-label="Close"
-          >
-            ×
-          </button>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onDecline()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Зөвшөөрөл өгөх</DialogTitle>
+          <DialogDescription>
+            Дараах нөхцөлтэй танилцсан тохиолдолд судалгаанд оролцох боломжтой.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 py-2">
+          {visibleClauses.map((clause, i) => (
+            <div key={clause} className="flex gap-3 text-sm text-muted-foreground">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                {i + 1}
+              </span>
+              <span className="leading-relaxed">{clause}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Scrollable content */}
-        <div className="px-6 py-4 overflow-y-auto flex-1">
-          <ol className="space-y-3">
-            {(expanded ? consentClauses : consentClauses.slice(0, 3)).map((clause, i) => (
-              <li key={i} className="flex gap-3 text-sm text-gray-600">
-                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">
-                  {i + 1}
-                </span>
-                <span className="leading-relaxed">{clause}</span>
-              </li>
-            ))}
-          </ol>
-          {!expanded && (
-            <button
-              onClick={() => setExpanded(true)}
-              className="mt-3 text-sm text-indigo-500 hover:text-indigo-600 underline underline-offset-2"
-            >
-              Дэлгэрэнгүй
-            </button>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button
-            onClick={onDecline}
-            className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors text-sm font-medium"
+        {!expanded && (
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-muted-foreground"
+            onClick={() => setExpanded(true)}
           >
+            Дэлгэрэнгүй
+          </Button>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onDecline}>
             Татгалзах
-          </button>
-          <button
-            onClick={onAccept}
-            className="px-5 py-2.5 rounded-lg bg-[#7C86F0] text-white hover:bg-indigo-500 transition-colors text-sm font-medium"
-          >
-            Зөвшөөрөх
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+          <Button onClick={onAccept}>Зөвшөөрөх</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,25 +1,38 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import FontSizeToggle from "@/components/FontSizeToggle";
 import MindXLogo from "@/components/MindXLogo";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Progress, ProgressValue } from "@/components/ui/progress";
 import { mockSurvey } from "@/lib/mock-survey";
 
 export default function QuestionsPage() {
   const params = useParams();
   const code = params.code as string;
-  const survey = mockSurvey;
-  const questions = survey.questions;
+
+  const { data: survey } = useQuery({
+    queryKey: ["survey", code],
+    queryFn: () => Promise.resolve(mockSurvey),
+  });
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [finished, setFinished] = useState(false);
 
+  if (!survey) return null;
+
+  const questions = survey.questions;
   const question = questions[currentStep];
   const progress = Math.round(((currentStep + 1) / questions.length) * 100);
   const isLast = currentStep === questions.length - 1;
+  const canProceed = answers[question.id] !== undefined;
 
   function handleSelect(optionId: string) {
     setAnswers((prev) => ({ ...prev, [question.id]: optionId }));
@@ -33,38 +46,19 @@ export default function QuestionsPage() {
     setCurrentStep((s) => s + 1);
   }
 
-  const canProceed = answers[question.id] !== undefined;
-
   if (finished) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="max-w-md text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg
-              className="w-8 h-8 text-green-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+        <Card className="max-w-md w-full text-center p-8 space-y-6">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle className="size-8 text-green-500" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Баярлалаа!</h1>
-          <p className="text-gray-500 mb-8">
+          <h1 className="text-3xl font-bold text-foreground">Баярлалаа!</h1>
+          <p className="text-muted-foreground">
             Таны хариултууд амжилттай хадгалагдлаа. Таны санал бидэнд маш их хэрэгтэй.
           </p>
-          <Link
-            href={`/s/${code}`}
-            className="inline-block px-6 py-3 rounded-lg bg-[#7C86F0] text-white font-medium hover:bg-indigo-500 transition-colors"
-          >
-            Нүүр хуудас руу буцах
-          </Link>
-        </div>
+          <Button render={<Link href={`/s/${code}`} />}>Нүүр хуудас руу буцах</Button>
+        </Card>
         <div className="fixed bottom-4 left-4 z-40">
           <MindXLogo />
         </div>
@@ -74,36 +68,30 @@ export default function QuestionsPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top-right font toggle */}
       <div className="fixed top-4 right-4 z-40">
         <FontSizeToggle />
       </div>
 
-      {/* Main content */}
       <main className="flex-1 flex flex-col items-center px-4 py-20">
-        <div className="max-w-[700px] w-full">
-          {/* Heading */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">{survey.title}</h1>
+        <div className="max-w-[700px] w-full space-y-10">
+          <h1 className="text-2xl font-bold text-foreground text-center">{survey.title}</h1>
 
-          {/* Progress bar */}
-          <div className="flex items-center gap-3 mb-10">
-            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#7C86F0] rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <span className="text-sm font-medium text-gray-500 whitespace-nowrap">{progress}%</span>
+          <div className="space-y-2">
+            <Progress value={progress}>
+              <ProgressValue />
+            </Progress>
           </div>
 
-          {/* Question */}
-          <div className="mb-8">
-            <p className="text-lg font-semibold text-gray-900 mb-6">
+          <Card className="p-6 space-y-6">
+            <p className="text-lg font-semibold text-foreground">
               {currentStep + 1}. {question.text}
-              {question.required && <span className="text-red-500 ml-1">*</span>}
+              {question.required && (
+                <Badge variant="destructive" className="ml-2 align-middle">
+                  *
+                </Badge>
+              )}
             </p>
 
-            {/* Options */}
             <div className="space-y-3">
               {question.options.map((option) => {
                 const selected = answers[question.id] === option.id;
@@ -113,54 +101,42 @@ export default function QuestionsPage() {
                     onClick={() => handleSelect(option.id)}
                     className={`w-full flex items-center gap-3 px-5 py-4 rounded-xl border-2 text-left transition-all ${
                       selected
-                        ? "border-[#7C86F0] bg-indigo-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-card hover:border-muted-foreground/30"
                     }`}
                   >
-                    {/* Radio circle */}
                     <div
-                      className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                        selected ? "border-[#7C86F0]" : "border-gray-300"
+                      className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                        selected ? "border-primary" : "border-muted-foreground/30"
                       }`}
                     >
-                      {selected && <div className="w-2.5 h-2.5 rounded-full bg-[#7C86F0]" />}
+                      {selected && <div className="size-2.5 rounded-full bg-primary" />}
                     </div>
-                    <span className="text-gray-700">{option.label}</span>
+                    <span className="text-foreground">{option.label}</span>
                   </button>
                 );
               })}
             </div>
-          </div>
+          </Card>
 
-          {/* Navigation */}
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => setCurrentStep((s) => s - 1)}
+            <Button
+              variant="ghost"
+              size="sm"
               disabled={currentStep === 0}
-              className={`text-sm transition-colors ${
-                currentStep === 0
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
+              onClick={() => setCurrentStep((s) => s - 1)}
             >
-              ← Өмнөх
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!canProceed}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                canProceed
-                  ? "bg-[#7C86F0] text-white hover:bg-indigo-500"
-                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
-            >
+              <ArrowLeft className="size-4" />
+              Өмнөх
+            </Button>
+            <Button size="lg" disabled={!canProceed} onClick={handleNext}>
               {isLast ? "Дуусгах" : "Үргэлжлүүлэх"}
-            </button>
+              {!isLast && <ArrowRight className="size-4" />}
+            </Button>
           </div>
         </div>
       </main>
 
-      {/* Bottom-left logo */}
       <div className="fixed bottom-4 left-4 z-40">
         <MindXLogo />
       </div>

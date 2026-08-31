@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useFontSize } from "./FontSizer";
 
 const sizes = [
@@ -12,18 +13,18 @@ export default function FontSizeToggle() {
   const { size, setSize } = useFontSize();
 
   return (
-    <div className="flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 shadow-sm border border-gray-100">
+    <div className="flex items-center gap-1 rounded-lg bg-card px-2 py-1 shadow-sm ring-1 ring-border">
       {sizes.map((s) => (
-        <button
+        <Button
           key={s.key}
+          variant={size === s.key ? "secondary" : "ghost"}
+          size="icon-sm"
+          className={s.className}
           onClick={() => setSize(s.key)}
-          className={`${s.className} font-bold rounded px-2 py-0.5 transition-colors ${
-            size === s.key ? "bg-indigo-100 text-indigo-600" : "text-gray-400 hover:text-gray-600"
-          }`}
           aria-label={`Font size ${s.key}`}
         >
           {s.label}
-        </button>
+        </Button>
       ))}
     </div>
   );
