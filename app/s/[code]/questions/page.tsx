@@ -27,10 +27,6 @@ export default function QuestionsPage() {
 
   function handleNext() {
     if (isLast) {
-      console.log("Survey answers:", {
-        ...answers,
-        [question.id]: answers[question.id],
-      });
       setFinished(true);
       return;
     }

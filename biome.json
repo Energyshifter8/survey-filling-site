@@ -35,6 +35,7 @@
         "noStaticElementInteractions": "warn"
       },
       "suspicious": {
+        "noConsole": "error",
         "noExplicitAny": "warn",
         "noArrayIndexKey": "warn"
       },
