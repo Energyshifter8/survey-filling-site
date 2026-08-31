@@ -18,9 +18,7 @@ export default function FontSizeToggle() {
           key={s.key}
           onClick={() => setSize(s.key)}
           className={`${s.className} font-bold rounded px-2 py-0.5 transition-colors ${
-            size === s.key
-              ? "bg-indigo-100 text-indigo-600"
-              : "text-gray-400 hover:text-gray-600"
+            size === s.key ? "bg-indigo-100 text-indigo-600" : "text-gray-400 hover:text-gray-600"
           }`}
           aria-label={`Font size ${s.key}`}
         >

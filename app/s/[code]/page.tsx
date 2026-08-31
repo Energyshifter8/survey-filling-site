@@ -1,13 +1,9 @@
 import Link from "next/link";
-import MindXLogo from "@/components/MindXLogo";
 import FontSizeToggle from "@/components/FontSizeToggle";
+import MindXLogo from "@/components/MindXLogo";
 import { mockSurvey } from "@/lib/mock-survey";
 
-export default async function LandingPage({
-  params,
-}: {
-  params: Promise<{ code: string }>;
-}) {
+export default async function LandingPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const survey = mockSurvey;
 
@@ -24,14 +20,10 @@ export default async function LandingPage({
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-6">
             {survey.title}
           </h1>
-          <p className="text-gray-500 text-lg leading-relaxed mb-8">
-            {survey.description}
-          </p>
+          <p className="text-gray-500 text-lg leading-relaxed mb-8">{survey.description}</p>
           <p className="text-sm text-gray-400 italic mb-10">
             Судалгаа нийтлэгч:{" "}
-            <span className="font-medium text-gray-500 not-italic">
-              {survey.publisherName}
-            </span>
+            <span className="font-medium text-gray-500 not-italic">{survey.publisherName}</span>
           </p>
           <Link
             href={`/s/${code}/tip`}

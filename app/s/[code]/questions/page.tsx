@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
 import Link from "next/link";
-import MindXLogo from "@/components/MindXLogo";
+import { useParams } from "next/navigation";
+import { useState } from "react";
 import FontSizeToggle from "@/components/FontSizeToggle";
+import MindXLogo from "@/components/MindXLogo";
 import { mockSurvey } from "@/lib/mock-survey";
 
 export default function QuestionsPage() {
@@ -60,8 +60,7 @@ export default function QuestionsPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Баярлалаа!</h1>
           <p className="text-gray-500 mb-8">
-            Таны хариултууд амжилттай хадгалагдлаа. Таны санал бидэнд маш их
-            хэрэгтэй.
+            Таны хариултууд амжилттай хадгалагдлаа. Таны санал бидэнд маш их хэрэгтэй.
           </p>
           <Link
             href={`/s/${code}`}
@@ -88,9 +87,7 @@ export default function QuestionsPage() {
       <main className="flex-1 flex flex-col items-center px-4 py-20">
         <div className="max-w-[700px] w-full">
           {/* Heading */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            {survey.title}
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">{survey.title}</h1>
 
           {/* Progress bar */}
           <div className="flex items-center gap-3 mb-10">
@@ -100,18 +97,14 @@ export default function QuestionsPage() {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-sm font-medium text-gray-500 whitespace-nowrap">
-              {progress}%
-            </span>
+            <span className="text-sm font-medium text-gray-500 whitespace-nowrap">{progress}%</span>
           </div>
 
           {/* Question */}
           <div className="mb-8">
             <p className="text-lg font-semibold text-gray-900 mb-6">
               {currentStep + 1}. {question.text}
-              {question.required && (
-                <span className="text-red-500 ml-1">*</span>
-              )}
+              {question.required && <span className="text-red-500 ml-1">*</span>}
             </p>
 
             {/* Options */}
@@ -134,9 +127,7 @@ export default function QuestionsPage() {
                         selected ? "border-[#7C86F0]" : "border-gray-300"
                       }`}
                     >
-                      {selected && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#7C86F0]" />
-                      )}
+                      {selected && <div className="w-2.5 h-2.5 rounded-full bg-[#7C86F0]" />}
                     </div>
                     <span className="text-gray-700">{option.label}</span>
                   </button>

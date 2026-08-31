@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import MindXLogo from "@/components/MindXLogo";
-import FontSizeToggle from "@/components/FontSizeToggle";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 import ConsentModal from "@/components/ConsentModal";
+import FontSizeToggle from "@/components/FontSizeToggle";
+import MindXLogo from "@/components/MindXLogo";
 import { mockSurvey } from "@/lib/mock-survey";
 
 export default function TipPage() {
@@ -47,9 +47,7 @@ export default function TipPage() {
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span className="text-sm font-medium">
-                {survey.questionCount} асуулт
-              </span>
+              <span className="text-sm font-medium">{survey.questionCount} асуулт</span>
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <svg
@@ -73,9 +71,9 @@ export default function TipPage() {
 
           {/* Instructions */}
           <p className="text-gray-500 text-base leading-relaxed mb-8 text-left">
-            Энэхүү судалгаанд хариулахдаа тухайн асуултын хариултуудаас өөрийн
-            хамгийн тохирохыг нэгийг нь сонгоно уу. Зарим асуултууд заавал хариулах
-            шаардлагатай байж болох тул анхаарна уу.
+            Энэхүү судалгаанд хариулахдаа тухайн асуултын хариултуудаас өөрийн хамгийн тохирохыг
+            нэгийг нь сонгоно уу. Зарим асуултууд заавал хариулах шаардлагатай байж болох тул
+            анхаарна уу.
           </p>
 
           {/* Consent checkbox row */}

@@ -5,9 +5,7 @@ export default function Home() {
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-4">
       <MindXLogo className="mb-8" />
-      <h1 className="text-3xl font-bold text-gray-900 mb-4 text-center">
-        Судалгааны сайт
-      </h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-4 text-center">Судалгааны сайт</h1>
       <p className="text-gray-500 text-center max-w-md">
         Зүүн дэх холбоосоор дамжуулан судалгаагаа бөглөнө үү.
       </p>

@@ -21,14 +21,7 @@ export default function MindXLogo({ className = "" }: { className?: string }) {
           transform="rotate(-10 22 16)"
         />
         {/* Bottom petal */}
-        <ellipse
-          cx="16"
-          cy="22"
-          rx="5"
-          ry="7"
-          fill="#F07CA0"
-          opacity="0.9"
-        />
+        <ellipse cx="16" cy="22" rx="5" ry="7" fill="#F07CA0" opacity="0.9" />
         {/* Left petal */}
         <ellipse
           cx="10"
@@ -42,9 +35,7 @@ export default function MindXLogo({ className = "" }: { className?: string }) {
         {/* Center dot */}
         <circle cx="16" cy="16" r="2.5" fill="white" />
       </svg>
-      <span className="text-lg font-bold tracking-tight text-gray-800">
-        mindX
-      </span>
+      <span className="text-lg font-bold tracking-tight text-gray-800">mindX</span>
     </div>
   );
 }

@@ -36,16 +36,14 @@ export default function ConsentModal({ onAccept, onDecline }: ConsentModalProps)
         {/* Scrollable content */}
         <div className="px-6 py-4 overflow-y-auto flex-1">
           <ol className="space-y-3">
-            {(expanded ? consentClauses : consentClauses.slice(0, 3)).map(
-              (clause, i) => (
-                <li key={i} className="flex gap-3 text-sm text-gray-600">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">
-                    {i + 1}
-                  </span>
-                  <span className="leading-relaxed">{clause}</span>
-                </li>
-              )
-            )}
+            {(expanded ? consentClauses : consentClauses.slice(0, 3)).map((clause, i) => (
+              <li key={i} className="flex gap-3 text-sm text-gray-600">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                  {i + 1}
+                </span>
+                <span className="leading-relaxed">{clause}</span>
+              </li>
+            ))}
           </ol>
           {!expanded && (
             <button

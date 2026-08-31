@@ -13,11 +13,7 @@ export const metadata: Metadata = {
   description: "Олон нийтийн судалгаа бөглөх сайт",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="mn" className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
