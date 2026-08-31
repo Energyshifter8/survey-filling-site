@@ -77,21 +77,19 @@ export default function TipPage() {
           </p>
 
           {/* Consent checkbox row */}
-          <label className="flex items-start gap-3 cursor-pointer text-left mb-8 group">
+          <label
+            onClick={() => {
+              if (!consentGiven) setShowModal(true);
+            }}
+            className="flex items-start gap-3 cursor-pointer text-left mb-8 group"
+          >
             <input
               type="checkbox"
               checked={consentGiven}
-              onChange={() => {
-                if (!consentGiven) setShowModal(true);
-              }}
-              className="mt-0.5 w-5 h-5 rounded border-gray-300 accent-[#7C86F0] cursor-pointer flex-shrink-0"
+              readOnly
+              className="mt-0.5 w-5 h-5 rounded border-gray-300 accent-[#7C86F0] cursor-pointer flex-shrink-0 pointer-events-none"
             />
-            <span
-              className="text-sm text-gray-600 leading-relaxed"
-              onClick={() => {
-                if (!consentGiven) setShowModal(true);
-              }}
-            >
+            <span className="text-sm text-gray-600 leading-relaxed select-none">
               Зөвшөөрлийн хуудастай танилцсан болно.
             </span>
           </label>
