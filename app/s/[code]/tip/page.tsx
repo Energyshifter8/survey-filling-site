@@ -81,6 +81,13 @@ export default function TipPage() {
             onClick={() => {
               if (!consentGiven) setShowModal(true);
             }}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && !consentGiven) {
+                e.preventDefault();
+                setShowModal(true);
+              }
+            }}
+            tabIndex={0}
             className="flex items-start gap-3 cursor-pointer text-left mb-8 group"
           >
             <input
