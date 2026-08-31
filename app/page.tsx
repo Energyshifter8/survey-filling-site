@@ -15,7 +15,7 @@ export default function Home() {
         href="/s/demo123"
         className="mt-8 px-6 py-3 rounded-lg bg-[#7C86F0] text-white font-medium hover:bg-indigo-500 transition-colors"
       >
-        Дemo судалгаа руу орох
+        судалгаа руу орох
       </Link>
     </main>
   );
