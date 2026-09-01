@@ -70,7 +70,7 @@ export default function TipPage() {
           </button>
 
           <div className="flex items-center justify-between pt-4">
-            <Button variant="ghost" size="sm" render={<Link href={`/s/${code}`} />}>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href={`/s/${code}`} />}>
               <ArrowLeft className="size-4" />
               Буцах
             </Button>
