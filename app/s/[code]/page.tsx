@@ -42,7 +42,7 @@ function LandingContent({ code }: { code: string }) {
               {survey.publisherName}
             </span>
           </p>
-          <Button size="lg" render={<Link href={`/s/${code}/tip`} />}>
+          <Button size="lg" nativeButton={false} render={<Link href={`/s/${code}/tip`} />}>
             Шалгаж үзэх
             <ArrowRight className="size-4" />
           </Button>
