@@ -53,7 +53,7 @@ export default function QuestionsPage() {
           <p className="text-muted-foreground">
             Таны хариултууд амжилттай хадгалагдлаа. Таны санал бидэнд маш их хэрэгтэй.
           </p>
-          <Button render={<Link href={`/s/${code}`} />}>Нүүр хуудас руу буцах</Button>
+          <Button nativeButton={false} render={<Link href={`/s/${code}`} />}>Нүүр хуудас руу буцах</Button>
         </Card>
         <div className="fixed bottom-4 left-4 z-40">
           <MindXLogo />
