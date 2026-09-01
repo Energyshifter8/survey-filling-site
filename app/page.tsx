@@ -13,7 +13,7 @@ export default function Home() {
         <p className="text-muted-foreground">
           Зүүн дэх холбоосоор дамжуулан судалгаагаа бөглөнө үү.
         </p>
-        <Button size="lg" render={<Link href="/s/demo123" />}>
+        <Button size="lg" nativeButton={false} render={<Link href="/s/demo123" />}>
           Судалгаа руу орох
           <ArrowRight className="size-4" />
         </Button>
