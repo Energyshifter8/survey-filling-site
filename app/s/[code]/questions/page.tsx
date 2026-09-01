@@ -53,7 +53,7 @@ export default function QuestionsPage() {
           <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100">
             <CheckCircle className="size-8 text-green-500" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Баярлалаа!</h1>
+          <h1 className="font-heading text-3xl font-semibold text-foreground">Баярлалаа!</h1>
           <p className="text-muted-foreground">
             Таны хариултууд амжилттай хадгалагдлаа. Таны санал бидэнд маш их хэрэгтэй.
           </p>
@@ -74,7 +74,9 @@ export default function QuestionsPage() {
 
       <main className="flex-1 flex flex-col items-center px-4 py-20">
         <div className="max-w-[700px] w-full space-y-10">
-          <h1 className="text-2xl font-bold text-foreground text-center">{survey.title}</h1>
+          <h1 className="font-heading text-2xl font-semibold text-foreground text-center tracking-tight">
+            {survey.title}
+          </h1>
 
           <div className="space-y-2">
             <Progress value={progress}>
@@ -83,7 +85,7 @@ export default function QuestionsPage() {
           </div>
 
           <Card className="p-6 space-y-6">
-            <p className="text-lg font-semibold text-foreground">
+            <p className="text-lg font-medium text-foreground text-wrap-balance leading-relaxed">
               {currentStep + 1}. {question.text}
               {question.required && (
                 <Badge variant="destructive" className="ml-2 align-middle">
@@ -97,6 +99,7 @@ export default function QuestionsPage() {
                 const selected = answers[question.id] === option.id;
                 return (
                   <button
+                    type="button"
                     key={option.id}
                     onClick={() => handleSelect(option.id)}
                     className={`w-full flex items-center gap-3 px-5 py-4 rounded-xl border-2 text-left transition-all ${

@@ -35,7 +35,7 @@ export default function TipPage() {
 
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-20">
         <div className="max-w-[700px] w-full space-y-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground leading-tight text-center">
+          <h1 className="font-heading text-3xl md:text-4xl font-semibold text-foreground leading-tight tracking-tight text-center">
             {survey.title}
           </h1>
 
@@ -52,7 +52,7 @@ export default function TipPage() {
             </div>
           </div>
 
-          <p className="text-muted-foreground text-base leading-relaxed text-left">
+          <p className="text-muted-foreground text-base leading-relaxed text-left text-wrap-balance">
             Энэхүү судалгаанд хариулахдаа тухайн асуултын хариултуудаас өөрийн хамгийн тохирохыг
             нэгийг нь сонгоно уу. Зарим асуултууд заавал хариулах шаардлагатай байж болох тул
             анхаарна уу.
@@ -70,7 +70,12 @@ export default function TipPage() {
           </button>
 
           <div className="flex items-center justify-between pt-4">
-            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href={`/s/${code}`} />}>
+            <Button
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/s/${code}`} />}
+            >
               <ArrowLeft className="size-4" />
               Буцах
             </Button>

@@ -32,13 +32,15 @@ function LandingContent({ code }: { code: string }) {
 
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-20">
         <Card className="max-w-[700px] w-full text-center p-8 md:p-12 space-y-6">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground leading-tight">
+          <h1 className="font-heading text-4xl md:text-5xl font-semibold text-foreground leading-tight tracking-tight">
             {survey.title}
           </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed">{survey.description}</p>
+          <p className="text-muted-foreground text-lg leading-relaxed text-wrap-balance">
+            {survey.description}
+          </p>
           <p className="text-sm text-muted-foreground/60 italic">
             Судалгаа нийтлэгч:{" "}
-            <span className="font-medium text-muted-foreground not-italic">
+            <span className="font-semibold text-muted-foreground not-italic">
               {survey.publisherName}
             </span>
           </p>
