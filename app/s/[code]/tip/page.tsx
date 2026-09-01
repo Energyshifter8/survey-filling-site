@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -10,17 +9,14 @@ import FontSizeToggle from "@/components/FontSizeToggle";
 import MindXLogo from "@/components/MindXLogo";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockSurvey } from "@/lib/mock-survey";
+import { useSurvey } from "@/lib/use-survey";
 
 export default function TipPage() {
   const router = useRouter();
   const params = useParams();
   const code = params.code as string;
 
-  const { data: survey } = useQuery({
-    queryKey: ["survey", code],
-    queryFn: () => Promise.resolve(mockSurvey),
-  });
+  const { data: survey } = useSurvey(code);
 
   const [consentGiven, setConsentGiven] = useState(false);
   const [showModal, setShowModal] = useState(false);

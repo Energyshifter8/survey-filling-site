@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -11,16 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress, ProgressValue } from "@/components/ui/progress";
-import { mockSurvey } from "@/lib/mock-survey";
+import { useSurvey } from "@/lib/use-survey";
 
 export default function QuestionsPage() {
   const params = useParams();
   const code = params.code as string;
 
-  const { data: survey } = useQuery({
-    queryKey: ["survey", code],
-    queryFn: () => Promise.resolve(mockSurvey),
-  });
+  const { data: survey } = useSurvey(code);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});

@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
@@ -8,7 +7,7 @@ import FontSizeToggle from "@/components/FontSizeToggle";
 import MindXLogo from "@/components/MindXLogo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { mockSurvey } from "@/lib/mock-survey";
+import { useSurvey } from "@/lib/use-survey";
 
 export default function LandingPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -17,10 +16,7 @@ export default function LandingPage({ params }: { params: Promise<{ code: string
 }
 
 function LandingContent({ code }: { code: string }) {
-  const { data: survey } = useQuery({
-    queryKey: ["survey", code],
-    queryFn: () => Promise.resolve(mockSurvey),
-  });
+  const { data: survey } = useSurvey(code);
 
   if (!survey) return null;
 
