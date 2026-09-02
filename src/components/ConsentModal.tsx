@@ -20,10 +20,9 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop is a pointer-only dismiss target, Escape/tab focus stay on the dialog itself.
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-      onClick={onClose}
-    >
+    // biome-ignore lint/a11y/noStaticElementInteractions: same backdrop dismiss target as above.
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: onClick only stops the backdrop's dismiss-click from bubbling — it triggers no action of its own, so it needs no keyboard equivalent. */}
       <div
         role="dialog"
         aria-modal="true"
@@ -54,7 +53,12 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
                 {clause.text}
                 {clause.suffix && (
                   <>
-                    <a href={clause.suffix.href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                    <a
+                      href={clause.suffix.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2"
+                    >
                       {clause.suffix.label}
                     </a>
                     {clause.suffix.after}
@@ -79,7 +83,12 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
                       <li className="ms-[21px] text-[14px] font-medium leading-[1.4] text-[#637389]">
                         {item.text}
                         {item.link && (
-                          <a href={item.link.href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                          <a
+                            href={item.link.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline underline-offset-2"
+                          >
                             {item.link.label}
                           </a>
                         )}
@@ -87,7 +96,9 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
                     </ol>
                   ))}
                   {section.note && (
-                    <p className="w-full text-[14px] font-medium leading-[1.4] tracking-[0.2px] text-[#637389]">{section.note}</p>
+                    <p className="w-full text-[14px] font-medium leading-[1.4] tracking-[0.2px] text-[#637389]">
+                      {section.note}
+                    </p>
                   )}
                 </div>
               ))}

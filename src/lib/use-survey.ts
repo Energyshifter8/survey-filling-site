@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
-import { checkPass, getSurveyQuestions, participateSurvey, resolveShortUrl, submitSurveyResponse } from "@/lib/api/survey";
+import {
+  checkPass,
+  getSurveyQuestions,
+  participateSurvey,
+  resolveShortUrl,
+  submitSurveyResponse,
+} from "@/lib/api/survey";
 import type { AnswerChoice, QuestionWithRule, SurveyResponseSubmission } from "@/lib/api/types";
 import { getBrowserInfo } from "@/lib/device-info";
 import {
@@ -10,9 +16,9 @@ import {
   clearSurveySession,
   loadSurveyMeta,
   loadSurveySession,
+  type SurveyMeta,
   saveSurveyMeta,
   saveSurveySession,
-  type SurveyMeta,
 } from "@/lib/survey-session";
 
 /** shortUrl-ийг судалгааны мэдээлэл рүү задлана. Intro/consent хуудсанд ашиглана. */
@@ -127,7 +133,17 @@ export function useSurveyQuestions(shortUrl: string) {
     })();
   }, [shortUrl]);
 
-  async function submit(answers: Record<number, { optionId?: number; questionType: QuestionWithRule["questionType"]; section?: QuestionWithRule["section"]; startedAt: number }>) {
+  async function submit(
+    answers: Record<
+      number,
+      {
+        optionId?: number;
+        questionType: QuestionWithRule["questionType"];
+        section?: QuestionWithRule["section"];
+        startedAt: number;
+      }
+    >,
+  ) {
     const session = loadSurveySession(shortUrl);
     if (!session) throw new Error("NO_SESSION");
 

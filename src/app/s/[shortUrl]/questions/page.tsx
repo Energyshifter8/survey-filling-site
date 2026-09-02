@@ -59,14 +59,15 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   }, [shortUrl, current, answers, done]);
 
   const questionStartedAt = useRef(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `current` intentionally resets the per-question timer.
   useEffect(() => {
     questionStartedAt.current = Date.now();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: `current` intentionally resets the per-question timer.
   }, [current]);
 
   // Auto-advance-ийн pending timer — асуулт солигдох бүрд (Буцах/Үргэлжлүүлэх/
   // auto-advance өөрөө) хуучин timer-ийг цуцалж, давхар шилжихээс сэргийлнэ.
   const autoAdvanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `current` intentionally clears any pending timer on question change.
   useEffect(() => {
     return () => {
       if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
@@ -98,7 +99,10 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
               : getFriendlyErrorMessage(error, "authenticated")}
         </p>
         {!isSessionExpired && (
-          <Link href={`/s/${shortUrl}`} className="mt-4 inline-block text-sm font-medium text-[#7c83fd] underline underline-offset-2">
+          <Link
+            href={`/s/${shortUrl}`}
+            className="mt-4 inline-block text-sm font-medium text-[#7c83fd] underline underline-offset-2"
+          >
             Эхлэл рүү буцах
           </Link>
         )}
@@ -288,6 +292,7 @@ function StarRating({
   const selectedIndex = sorted.findIndex((option) => option.id === selectedId);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: onMouseLeave only resets the hover preview; every real (click/keyboard) interaction lives on the child <button>s below.
     <div className="flex items-center gap-2" onMouseLeave={() => setHoverIndex(null)}>
       {sorted.map((option, index) => {
         const filled = hoverIndex !== null ? index <= hoverIndex : index <= selectedIndex;
@@ -303,7 +308,9 @@ function StarRating({
             onClick={() => onSelect(option.id)}
             className="rounded transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
           >
+            {/* Дүрс зөвхөн чимэглэл — жинхэнэ шошго дээрх button-ий aria-label дээр аль хэдийн байгаа. */}
             <svg
+              aria-hidden="true"
               viewBox="0 0 24 24"
               className="size-9"
               fill={filled ? "#7C83FD" : "none"}

@@ -1,5 +1,11 @@
 import { apiRequest, apiRequestText } from "@/lib/api/client";
-import type { BrowserInfo, SurveyQuestionsDTO, SurveyResponseSubmission, SurveyToken, TakeSurvey } from "@/lib/api/types";
+import type {
+  BrowserInfo,
+  SurveyQuestionsDTO,
+  SurveyResponseSubmission,
+  SurveyToken,
+  TakeSurvey,
+} from "@/lib/api/types";
 
 /** 1. GET /s/{shortUrl} — судалгааг холбоосоор ачаалж, surveyId авах.
  *  Хариу нь raw plain-text surveyId (JSON биш) — decompiled bundle-ээр
@@ -30,10 +36,9 @@ export function checkPass(surveyId: string, browserInfo: BrowserInfo): Promise<S
 
 /** 4. GET /public/survey/{responseSessionId}/questions — Bearer шаардсан. */
 export function getSurveyQuestions(responseSessionId: string, token: string): Promise<SurveyQuestionsDTO> {
-  return apiRequest<SurveyQuestionsDTO>(
-    `/public/survey/${encodeURIComponent(responseSessionId)}/questions`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  return apiRequest<SurveyQuestionsDTO>(`/public/survey/${encodeURIComponent(responseSessionId)}/questions`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
 /** 5. POST /public/survey/{responseSessionId}/submit — Bearer шаардсан.

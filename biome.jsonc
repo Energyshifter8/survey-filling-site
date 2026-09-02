@@ -1,0 +1,45 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		// Зөвхөн live Next.js app (src/**) — эх зам, TypeScript-ийн `tsconfig.json`
+		// "include"-д ч ороогүй бөгөөд аль хэдийн ажиллаж буй app-д хэрэглэгддэггүй.
+		"includes": ["src/**", "!src/**/*.d.ts"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "space",
+		"indentWidth": 2,
+		"lineWidth": 120
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended"
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
+	"css": {
+		"parser": {
+			// Tailwind v4 (`@theme inline`, `@import "tailwindcss"` гэх мэт) — globals.css-д ашигладаг.
+			"tailwindDirectives": true
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
+}

@@ -1,14 +1,14 @@
 "use client";
 
 import { Manrope } from "next/font/google";
-import { use, useState } from "react";
 import { useRouter } from "next/navigation";
+import { use, useState } from "react";
 import ConsentModal from "@/components/ConsentModal";
 import FontSizeToggle, {
   BODY_SIZE_CLASSES,
+  type FontSizeLevel,
   HEADING_SIZE_CLASSES,
   META_SIZE_CLASSES,
-  type FontSizeLevel,
 } from "@/components/FontSizeToggle";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
 import { trackEvent } from "@/lib/telemetry";
@@ -51,7 +51,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 
   if (!meta) return null;
 
-  const { survey, taken } = meta;
+  const { survey, taken, surveyId } = meta;
   // "Ажилтны сайн сайхан байдал" мэтийн гарчиг/тайлбар survey.title/description
   // гэдгээр ирдэггүй (тийм талбар байхгүй) — жинхэнэ эх сурвалж нь
   // survey.pages.START[0] (2026-09-02, curl-ээр баталгаажсан — src/lib/api/types.ts-ийг үз).
@@ -85,7 +85,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
     setStartError(null);
     try {
       trackEvent("survey_consent_given", { shortUrl });
-      await startSurveySession(shortUrl, meta!.surveyId, needsPassCode ? passCode.trim() : undefined);
+      await startSurveySession(shortUrl, surveyId, needsPassCode ? passCode.trim() : undefined);
       router.push(`/s/${shortUrl}/questions`);
     } catch (err) {
       // checkPass — яг Bearer token олгож буй дуудлага, өөрөө Bearer шаарддаггүй.
@@ -179,7 +179,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
-                <span className={META_SIZE_CLASSES[fontLevel] + " text-[#10182B]"}>
+                <span className={`${META_SIZE_CLASSES[fontLevel]} text-[#10182B]`}>
                   Зөвшөөрлийн хуудастай танилцсан болно.
                 </span>
               </button>

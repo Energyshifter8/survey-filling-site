@@ -5,8 +5,7 @@
 // байж болно). collector-staging.mindxplus.com-г decompiled bundle-ээр
 // баталгаажсан (2026-09) — service-staging.mindxplus.com ӨӨР, хамааралгүй
 // сервис (401 буцаадаг, survey API биш).
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SURVEY_API_BASE || "";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SURVEY_API_BASE || "";
 
 export class ApiError extends Error {
   status: number;
