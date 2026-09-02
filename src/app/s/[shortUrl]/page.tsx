@@ -52,11 +52,17 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   if (!meta) return null;
 
   const { survey, taken } = meta;
+  // "Ажилтны сайн сайхан байдал" мэтийн гарчиг/тайлбар survey.title/description
+  // гэдгээр ирдэггүй (тийм талбар байхгүй) — жинхэнэ эх сурвалж нь
+  // survey.pages.START[0] (2026-09-02, curl-ээр баталгаажсан — src/lib/api/types.ts-ийг үз).
+  const startPage = survey.pages?.START?.[0];
+  const displayTitle = startPage?.title ?? "Судалгаанд оролцох";
+  const displayDescription = startPage?.content;
 
   if (taken) {
     return (
       <StatusScreen manrope={manrope.className}>
-        {survey.title ? `${survey.title} — ` : ""}
+        {displayTitle ? `${displayTitle} — ` : ""}
         Та энэ судалгааг өмнө нь бөглөсөн байна. Баярлалаа!
       </StatusScreen>
     );
@@ -99,10 +105,10 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
           {step === "intro" && (
             <div className="flex flex-col items-center gap-5 text-center">
               <h1 className={`font-semibold leading-tight text-[#10182B] ${HEADING_SIZE_CLASSES[fontLevel]}`}>
-                {survey.title ?? "Судалгаанд оролцох"}
+                {displayTitle}
               </h1>
-              {survey.description && (
-                <p className={`text-[#10182B] ${BODY_SIZE_CLASSES[fontLevel]}`}>{survey.description}</p>
+              {displayDescription && (
+                <p className={`text-[#10182B] ${BODY_SIZE_CLASSES[fontLevel]}`}>{displayDescription}</p>
               )}
               {survey.creator && (
                 <p className={META_SIZE_CLASSES[fontLevel]}>
@@ -123,7 +129,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
           {step === "consent" && (
             <div className="flex flex-col items-center gap-5 text-center">
               <h1 className={`font-semibold leading-tight text-[#10182B] ${HEADING_SIZE_CLASSES[fontLevel]}`}>
-                {survey.title}
+                {displayTitle}
               </h1>
               <p className={`text-[#10182B] ${META_SIZE_CLASSES[fontLevel]}`}>
                 {survey.questionCount != null && `${survey.questionCount} асуулт`}

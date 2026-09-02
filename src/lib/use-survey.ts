@@ -94,11 +94,20 @@ export function useSurveyQuestions(shortUrl: string) {
       try {
         const dto = await getSurveyQuestions(session.responseSessionId, session.token);
         if (fetchedForRef.current !== shortUrl) return;
+        // ЗАСВАР (2026-09-02, бодит response-оор илэрсэн): section бүрийг ТУСДАА
+        // эрэмбэлээд дараа нь холбоно — эсрэгээр бол (бүгдийг нэгтгээд нэг
+        // sort хийвэл) CUSTOM_QUESTION_FIRST ба PRIMARY_QUESTION хоёр section
+        // ХАРИЛЦАН questionOrder-оороо (хоёулаа 1-ээс эхэлдэг тул) холилцоод,
+        // section-ийн дараалал алдагддаг байсан (жишээ нь star/numeric rating
+        // асуулт зөв 6/7-р байрандаа биш, 11/13-р байранд, PRIMARY_QUESTION
+        // асуултуудтай хутгалдсан байдлаар гарч байсан).
+        const sortByOrder = (qs: QuestionWithRule[] | undefined) =>
+          [...(qs ?? [])].sort((a, b) => a.questionOrder - b.questionOrder);
         const ordered = [
-          ...(dto.customQuestionFirst ?? []),
-          ...dto.questions,
-          ...(dto.customQuestionLast ?? []),
-        ].sort((a, b) => a.questionOrder - b.questionOrder);
+          ...sortByOrder(dto.customQuestionFirst),
+          ...sortByOrder(dto.questions),
+          ...sortByOrder(dto.customQuestionLast),
+        ];
         setQuestions(ordered);
       } catch (err) {
         if (fetchedForRef.current === shortUrl) {
