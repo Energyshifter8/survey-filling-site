@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ApiError } from "@/lib/api/client";
 import { checkPass, getSurveyQuestions, participateSurvey, resolveShortUrl, submitSurveyResponse } from "@/lib/api/survey";
 import type { AnswerChoice, QuestionWithRule, SurveyResponseSubmission } from "@/lib/api/types";
 import { getBrowserInfo } from "@/lib/device-info";
 import {
+  clearSurveyProgress,
+  clearSurveySession,
   loadSurveyMeta,
   loadSurveySession,
   saveSurveyMeta,
@@ -85,7 +88,17 @@ export function useSurveyQuestions(shortUrl: string) {
         ].sort((a, b) => a.questionOrder - b.questionOrder);
         setQuestions(ordered);
       } catch (err) {
-        if (!cancelled) setError(err);
+        if (!cancelled) {
+          if (err instanceof ApiError && err.status === 401) {
+            // Token хугацаа дууссан — хуучирсан session/progress-ийг цэвэрлээд
+            // эхнээс (intro) эхлүүлнэ (page component "SESSION_EXPIRED"-г барьж redirect хийнэ).
+            clearSurveySession(shortUrl);
+            clearSurveyProgress(shortUrl);
+            setError(new Error("SESSION_EXPIRED"));
+          } else {
+            setError(err);
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -124,6 +137,9 @@ export function useSurveyQuestions(shortUrl: string) {
       surveyId: meta?.surveyId ?? "",
     };
     await submitSurveyResponse(session.responseSessionId, session.token, submission);
+    // Амжилттай илгээгдмэгц үргэлжлүүлэх зүйл алга — session/progress-ийг цэвэрлэнэ.
+    clearSurveySession(shortUrl);
+    clearSurveyProgress(shortUrl);
   }
 
   return { questions, loading, error, submit };

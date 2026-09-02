@@ -50,6 +50,14 @@ function safeSet(key: string, value: string) {
   }
 }
 
+function safeRemove(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // хадгалагдаагүй байсан бол устгах ч зүйл алга
+  }
+}
+
 export function saveSurveyMeta(shortUrl: string, meta: SurveyMeta) {
   safeSet(metaKey(shortUrl), JSON.stringify(meta));
 }
@@ -66,4 +74,35 @@ export function saveSurveySession(shortUrl: string, session: SurveySession) {
 export function loadSurveySession(shortUrl: string): SurveySession | null {
   const raw = safeGet(sessionKey(shortUrl));
   return raw ? (JSON.parse(raw) as SurveySession) : null;
+}
+
+/** check-pass-аас гарсан session (responseSessionId/token) устгана — token
+ *  хугацаа дуусах (401) эсвэл submit амжилттай болоход дуудна. */
+export function clearSurveySession(shortUrl: string) {
+  safeRemove(sessionKey(shortUrl));
+}
+
+// Асуулт дундаас refresh хийхэд эхнээс эхлэхгүй байхын тулд одоогийн асуултын
+// дугаар + сонгосон хариултуудыг тусад нь хадгална (session/token-оос
+// тусдаа — эдгээр нь UI-only progress, backend rүү харагдахгүй).
+export interface SurveyProgress {
+  current: number;
+  answers: Record<number, { optionId?: number }>;
+}
+
+function progressKey(shortUrl: string) {
+  return `survey_progress_${shortUrl}`;
+}
+
+export function saveSurveyProgress(shortUrl: string, progress: SurveyProgress) {
+  safeSet(progressKey(shortUrl), JSON.stringify(progress));
+}
+
+export function loadSurveyProgress(shortUrl: string): SurveyProgress | null {
+  const raw = safeGet(progressKey(shortUrl));
+  return raw ? (JSON.parse(raw) as SurveyProgress) : null;
+}
+
+export function clearSurveyProgress(shortUrl: string) {
+  safeRemove(progressKey(shortUrl));
 }

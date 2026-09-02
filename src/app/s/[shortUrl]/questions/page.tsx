@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { use, useEffect, useRef, useState } from "react";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
+import { loadSurveyProgress, saveSurveyProgress } from "@/lib/survey-session";
 import { trackEvent } from "@/lib/telemetry";
 import { useSurveyQuestions } from "@/lib/use-survey";
 
@@ -10,19 +12,38 @@ type LocalAnswer = { optionId?: number };
 
 export default function SurveyQuestionsPage({ params }: { params: Promise<{ shortUrl: string }> }) {
   const { shortUrl } = use(params);
+  const router = useRouter();
   const { questions, loading, error, submit } = useSurveyQuestions(shortUrl);
 
-  const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, LocalAnswer>>({});
+  // Refresh хийхэд асуулт 1-ээс дахин эхлэхгүй байхын тулд хадгалсан
+  // progress-оор (байвал) эхлэл болгоно.
+  const [current, setCurrent] = useState(() => loadSurveyProgress(shortUrl)?.current ?? 0);
+  const [answers, setAnswers] = useState<Record<number, LocalAnswer>>(
+    () => loadSurveyProgress(shortUrl)?.answers ?? {},
+  );
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (done) return;
+    saveSurveyProgress(shortUrl, { current, answers });
+  }, [shortUrl, current, answers, done]);
 
   const questionStartedAt = useRef(0);
   useEffect(() => {
     questionStartedAt.current = Date.now();
     // biome-ignore lint/correctness/useExhaustiveDependencies: `current` intentionally resets the per-question timer.
   }, [current]);
+
+  const isSessionExpired = error instanceof Error && error.message === "SESSION_EXPIRED";
+  useEffect(() => {
+    // getSurveyQuestions 401 буцаавал (token хугацаа дууссан) session/progress
+    // аль хэдийн цэвэрлэгдсэн (useSurveyQuestions-д) — энд зөвхөн intro руу буцна.
+    if (isSessionExpired) {
+      router.replace(`/s/${shortUrl}`);
+    }
+  }, [isSessionExpired, router, shortUrl]);
 
   if (loading) {
     return <StatusScreen>Ачааллаж байна…</StatusScreen>;
@@ -33,13 +54,17 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     return (
       <StatusScreen>
         <p>
-          {isNoSession
-            ? "Судалгаанд орох session олдсонгүй эсвэл дууссан байна. Эхнээс дахин эхлүүлнэ үү."
-            : getFriendlyErrorMessage(error, "authenticated")}
+          {isSessionExpired
+            ? "Судалгаанд орох хугацаа дууссан байна. Эхлэл рүү шилжиж байна…"
+            : isNoSession
+              ? "Судалгаанд орох session олдсонгүй эсвэл дууссан байна. Эхнээс дахин эхлүүлнэ үү."
+              : getFriendlyErrorMessage(error, "authenticated")}
         </p>
-        <Link href={`/s/${shortUrl}`} className="mt-4 inline-block text-sm font-medium text-[#7c83fd] underline underline-offset-2">
-          Эхлэл рүү буцах
-        </Link>
+        {!isSessionExpired && (
+          <Link href={`/s/${shortUrl}`} className="mt-4 inline-block text-sm font-medium text-[#7c83fd] underline underline-offset-2">
+            Эхлэл рүү буцах
+          </Link>
+        )}
       </StatusScreen>
     );
   }
