@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { checkPass, getSurveyQuestions, participateSurvey, resolveShortUrl, submitSurveyResponse } from "@/lib/api/survey";
 import type { AnswerChoice, QuestionWithRule, SurveyResponseSubmission } from "@/lib/api/types";
+import { getBrowserInfo } from "@/lib/device-info";
 import {
   loadSurveyMeta,
   loadSurveySession,
@@ -26,7 +27,7 @@ export function useSurveyMeta(shortUrl: string) {
       setError(null);
       try {
         const surveyId = await resolveShortUrl(shortUrl);
-        const { survey, taken } = await participateSurvey(surveyId);
+        const { survey, taken } = await participateSurvey(surveyId, getBrowserInfo());
         if (cancelled) return;
         const next: SurveyMeta = { surveyId, survey, taken };
         saveSurveyMeta(shortUrl, next);
@@ -52,7 +53,7 @@ export async function startSurveySession(shortUrl: string, surveyId: string, pas
   const existing = loadSurveySession(shortUrl);
   if (existing) return existing;
 
-  const session = await checkPass(surveyId, passCode);
+  const session = await checkPass(surveyId, getBrowserInfo(passCode));
   saveSurveySession(shortUrl, session);
   return session;
 }
@@ -115,7 +116,13 @@ export function useSurveyQuestions(shortUrl: string) {
       }
     }
 
-    const submission: SurveyResponseSubmission = { templateQuestionAnswers, customQuestionAnswers };
+    const meta = loadSurveyMeta(shortUrl);
+    const submission: SurveyResponseSubmission = {
+      templateQuestionAnswers,
+      customQuestionAnswers,
+      sessionId: session.responseSessionId,
+      surveyId: meta?.surveyId ?? "",
+    };
     await submitSurveyResponse(session.responseSessionId, session.token, submission);
   }
 

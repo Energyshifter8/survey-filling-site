@@ -2,7 +2,9 @@
 //
 // Base URL: `NEXT_PUBLIC_API_URL`-г тэргүүлж уншина, байхгүй бол
 // `NEXT_PUBLIC_SURVEY_API_BASE`-г ашиглана (хоёулаа .env.local-д ижил утгатай
-// байж болно — PROMPT.md-ийн "Мэдэгдэж буй эрсдэл" хэсгийг үз).
+// байж болно). collector-staging.mindxplus.com-г decompiled bundle-ээр
+// баталгаажсан (2026-09) — service-staging.mindxplus.com ӨӨР, хамааралгүй
+// сервис (401 буцаадаг, survey API биш).
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SURVEY_API_BASE || "";
 
@@ -24,16 +26,19 @@ interface RequestOptions {
   headers?: Record<string, string>;
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** Бүх хүсэлтэд нийтлэг: base URL угтвар, Accept-Language: mn-MN header
+ *  (decompiled bundle-ээр баталгаажсан — жинхэнэ frontend-ийн axios interceptor
+ *  бүх хүсэлтэд энэ header-ийг нэмдэг). */
+async function doFetch(path: string, options: RequestOptions): Promise<Response> {
   if (!API_BASE_URL) {
     throw new ApiError("NEXT_PUBLIC_API_URL тохируулагдаагүй байна", 0);
   }
 
-  let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    return await fetch(`${API_BASE_URL}${path}`, {
       method: options.method ?? "GET",
       headers: {
+        "Accept-Language": "mn-MN",
         ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...options.headers,
       },
@@ -43,6 +48,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     // fetch throws only on network-level failure (offline, DNS, TLS, CORS block).
     throw new ApiError("NETWORK_ERROR", 0);
   }
+}
+
+/** JSON хариу хүлээж буй endpoint-уудад. */
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const res = await doFetch(path, options);
 
   const contentType = res.headers.get("content-type") ?? "";
   const raw = await res.text();
@@ -53,4 +63,18 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   return parsed as T;
+}
+
+/** Raw plain-text хариу буцаадаг endpoint-уудад (жишээ нь GET /s/{shortUrl} —
+ *  Content-Type: text/plain, JSON биш, decompiled bundle-ээр баталгаажсан).
+ *  JSON.parse-г огт дуудахгүй тул сервер JSON бус хариу буцаахад алдаа шидэхгүй. */
+export async function apiRequestText(path: string, options: RequestOptions = {}): Promise<string> {
+  const res = await doFetch(path, options);
+  const raw = await res.text();
+
+  if (!res.ok) {
+    throw new ApiError(`Request failed: ${path} -> ${res.status}`, res.status, raw);
+  }
+
+  return raw;
 }

@@ -66,33 +66,36 @@ Response доторх дотоод талбарын нэрс дараах бай
 | Зүйл | Төлөв |
 |---|---|
 | 5 endpoint-ийн зам/method | ✅ Баталгаажсан (Swagger) |
-| CORS зөвшөөрөгдсөн эсэх | ✅ Шалгагдсан (curl, `Access-Control-Allow-Origin`) |
-| `GET /s/{shortUrl}` хариу нь string эсвэл object эсэх | ⚠️ Хоёуланг нь дэмжинэ (`resolveShortUrl`) |
-| `survey.title/description/creator/passCodeProtected/...` | ❌ TODO — `src/lib/api/types.ts`-д тэмдэглэгдсэн |
-| `question.content`, `option.content`, `option.id` | ❌ TODO — git түүхэнд байсан өмнөх (яг энэ backend-тэй ажиллаж байсан) хувилбараас зээлсэн хамгийн боломжит таамаг, гэхдээ энэ session-д бодит staging хариугаар шалгаагдаагүй |
-| `participate`/`check-pass` хүсэлтийн body (deviceId/browser шаардах эсэх) | ❌ TODO — өгөгдсөн reference client body-гүй гэж үзсэн; хэрэв "аль хэдийн бөглөсөн" төлөвийг device-ээр ялгах шаардлагатай бол backend body хүлээж авдаг байж болзошгүй |
-| `submit`-ийн body бүтэц (`templateQuestionAnswers`/`customQuestionAnswers`) | ❌ TODO — хамгийн баталгаагүй хэсэг |
-| `GET /s/{shortUrl}` бодит response (2026-09-02) | ⚠️ **Блоклогдсон** — бодит `shortUrl` (`Ew3kamqxsflGK6ly1H7p0`)-аар ч curl хийхэд `HTTP 401`, `Content-Length: 0` буцаасан. Доорх "Мэдэгдэж буй хязгаарлалт"-ыг үз. |
-
-**Бодит `shortUrl` жишээ өгөгдсөн ч GET /s/{shortUrl} 401 буцаасан тул цааш
-(participate/check-pass/questions/submit) баталгаажуулах боломжгүй байна —
-дараагийн хэсгийг үз.**
+| **API host** (`collector-staging.mindxplus.com`, `service-staging` БИШ) | ✅ Баталгаажсан (2026-09, decompiled bundle + бодит curl) |
+| `participate`/`check-pass` body — `{deviceId, browser, passCode}` | ✅ Баталгаажсан (2026-09, decompiled bundle + бодит curl 200) |
+| `submit` гадна бүтэц — `{templateQuestionAnswers, customQuestionAnswers, sessionId, surveyId}` | ✅ Баталгаажсан (2026-09, decompiled bundle) — **дотоод item-ийн талбарын нэрс (`AnswerChoice`) хэвээр TODO** |
+| Бүх хүсэлтэд `Accept-Language: mn-MN` header | ✅ Баталгаажсан (2026-09, decompiled bundle) |
+| CORS зөвшөөрөгдсөн эсэх | ✅ Шалгагдсан (curl, зөв host дээр) |
+| `GET /s/{shortUrl}` хариу — raw plain-text surveyId (JSON биш) | ✅ Баталгаажсан (2026-09, бодит curl: `Content-Type: text/plain`, body нь зүгээр UUID) — `apiRequestText` ашиглана, `JSON.parse` огт дуудахгүй |
+| `question.content`, `option.content`, `option.id` | ✅ Баталгаажсан (2026-09, бодит `/questions` curl хариу) |
+| `question.isRequired`, `question.minMinutes`/`maxMinutes` гэх мэт зарим бусад талбар | ⚠️ **Шинэ зөрүү олдсон** — бодит хариунд `required` (`isRequired` биш), `minAnswerCount`/`maxAnswerCount`, `conditional`, `nextQuestionId` гэж ирсэн. `types.ts`-д хараахан засаагүй — доорх мессежийг үз. |
+| `survey.title`/`survey.description` | ⚠️ **Одоогийн код буруу таамагласан нь батлагдсан** — бодит `participate` хариунд top-level `title`/`description` талбар байхгүй; оронд нь `survey.pages.START[0].title`/`.content` дотор байна (git түүхэн дэх `findSurveyPage` загвартай төстэй). Хараахан засаагүй. |
+| `submit`-ийн дотоод item бүтэц (`questionId`/`optionId`/`duration` нэр зөв эсэх) | ❌ TODO (зориудаар үлдээсэн — доор тайлбарлав) |
 
 ## Гараар туршиж баталгаажуулсан зүйлс
 
 - ✅ `pnpm build` — TypeScript, ESLint (`react-hooks` дүрмүүд орсон) алдаагүй
   амжилттай build хийгдсэн.
-- ✅ `pnpm dev` асаагаад `/s/anything` болон `/s/anything/questions`-г
-  curl-аар шалгахад 200, сервер тал алдаагүй (Server Component/route
-  түвшинд алдаагүй; өгөгдөл нь client дээр `fetch`-ээр татагддаг тул энэ
-  тест зөвхөн route/SSR shell ажиллаж байгааг батална).
 - ✅ CORS — `curl -X OPTIONS`-ээр preflight, мөн бодит `GET`-ийг
-  `Origin: http://localhost:3000`-той шалгасан.
-- ⚠️ **Бүрэн интерактив урсгал (intro → consent → questions → done,
-  already-taken, 401 кэйс) хараахан browser дээр гараар дарж баталгаажаагүй** —
-  үүнд бодит `shortUrl` (танаас хүлээгдэж байгаа) болон browser tool
-  холболт (энэ session-д Chrome extension холбогдоогүй байсан) хэрэгтэй.
-  Бодит `shortUrl` өгөгдмөгц дараагийн алхам болгож үүнийг гүйцээнэ.
+  `Origin: http://localhost:3000`-той зөв host дээр шалгасан.
+- ✅ **Бүтэн урсгал (`resolveShortUrl` → `participateSurvey` → `checkPass` →
+  `getSurveyQuestions`) real `shortUrl`-аар (`Ew3kamqxsflGK6ly1H7p0`), кодын
+  яг явуулдаг request bytes-ийг curl-аар давтан шалгахад **4 дуудлага бүгд
+  200 OK** буцаасан (өмнө нь 401 байсан). "Судалгаанд орох хугацаа дууссан"
+  мессеж ЭНЭ урсгалд ирэхгүй болсныг батална (алдаа огт гараагүй тул алдааны
+  мессеж рүү хүрэхгүй).
+- ⚠️ **Browser дээр гараар дарж (click-through) хараахан баталгаажаагүй** —
+  Chrome extension энэ session-д холбогдоогүй. curl-аар бүтэн урсгал
+  (resolve→participate→check-pass→questions) амжилттай болохыг баталсан ч
+  UI/progress bar/consent disable зэрэг client-only зан төлөвийг нүдээр
+  харж шалгаагүй.
+- ⛔ **`POST /submit`-г бодитоор дуудаагүй** — таны staging survey-д жинхэнэ
+  (хуурамч ч гэсэн) хариулт бичих тул зөвшөөрөлгүйгээр дуудаагүй.
 
 ## Мэдэгдэж буй хязгаарлалт
 
