@@ -24,7 +24,8 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   }
 
   if (error) {
-    return <StatusScreen>{getFriendlyErrorMessage(error)}</StatusScreen>;
+    // resolveShortUrl / participateSurvey — Bearer token хараахан байхгүй үе.
+    return <StatusScreen>{getFriendlyErrorMessage(error, "public")}</StatusScreen>;
   }
 
   if (!meta) return null;
@@ -56,14 +57,15 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
       await startSurveySession(shortUrl, meta!.surveyId, needsPassCode ? passCode.trim() : undefined);
       router.push(`/s/${shortUrl}/questions`);
     } catch (err) {
-      setStartError(getFriendlyErrorMessage(err));
+      // checkPass — яг Bearer token олгож буй дуудлага, өөрөө Bearer шаарддаггүй.
+      setStartError(getFriendlyErrorMessage(err, "public"));
       setStarting(false);
     }
   }
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-16">
-      <div className="w-full max-w-[560px]">
+      <div className="w-full max-w-140">
         {step === "intro" && (
           <div className="space-y-6">
             <h1 className="text-2xl font-medium text-[#1a1a2e] sm:text-3xl">{survey.title ?? "Судалгаанд оролцох"}</h1>
@@ -76,7 +78,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
             <button
               type="button"
               onClick={() => setStep("consent")}
-              className="rounded-lg bg-[#7c83fd] px-7 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#6870f0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
+              className="rounded-lg bg-[#7c83fd] px-7 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#6870f0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
             >
               Эхлэх
             </button>
@@ -114,7 +116,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                 type="checkbox"
                 checked={consented}
                 onChange={(e) => setConsented(e.target.checked)}
-                className="mt-0.5 size-4 accent-[#7c83fd] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
+                className="mt-0.5 size-4 accent-[#7c83fd] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
               />
               Зөвшөөрлийн хуудастай танилцсан болно.
             </label>
@@ -125,7 +127,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
               type="button"
               disabled={!canContinue}
               onClick={handleContinue}
-              className="rounded-lg bg-[#7c83fd] px-7 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#6870f0] disabled:cursor-not-allowed disabled:bg-[#c7c9f7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
+              className="rounded-lg bg-[#7c83fd] px-7 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#6870f0] disabled:cursor-not-allowed disabled:bg-[#c7c9f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
             >
               {starting ? "Ачаалж байна…" : "Цааш"}
             </button>
@@ -139,7 +141,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 function StatusScreen({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-16">
-      <p className="max-w-[480px] text-center leading-relaxed text-[#5b5b6b]">{children}</p>
+      <p className="max-w-120 text-center leading-relaxed text-[#5b5b6b]">{children}</p>
     </main>
   );
 }

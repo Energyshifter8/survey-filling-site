@@ -35,7 +35,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
         <p>
           {isNoSession
             ? "Судалгаанд орох session олдсонгүй эсвэл дууссан байна. Эхнээс дахин эхлүүлнэ үү."
-            : getFriendlyErrorMessage(error)}
+            : getFriendlyErrorMessage(error, "authenticated")}
         </p>
         <Link href={`/s/${shortUrl}`} className="mt-4 inline-block text-sm font-medium text-[#7c83fd] underline underline-offset-2">
           Эхлэл рүү буцах
@@ -91,7 +91,8 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
       await submit(payload);
       setDone(true);
     } catch (err) {
-      setSubmitError(getFriendlyErrorMessage(err));
+      // submitSurveyResponse — Bearer token-той дуудлага.
+      setSubmitError(getFriendlyErrorMessage(err, "authenticated"));
     } finally {
       setSubmitting(false);
     }
@@ -99,7 +100,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
 
   return (
     <main className="flex flex-1 flex-col items-center px-4 py-16">
-      <div className="w-full max-w-[560px] space-y-8">
+      <div className="w-full max-w-140 space-y-8">
         <div className="h-1.5 rounded-full bg-[#eceef7]">
           <div
             className="h-full rounded-full bg-[#7c83fd] transition-[width] duration-200"
@@ -127,7 +128,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                     name={`question-${question.id}`}
                     checked={selected}
                     onChange={() => handleSelect(option.id)}
-                    className="size-4 accent-[#7c83fd] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
+                    className="size-4 accent-[#7c83fd] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
                   />
                   <span className="text-[#1a1a2e]">{option.content}</span>
                 </label>
@@ -148,7 +149,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
           type="button"
           disabled={!canProceed || submitting}
           onClick={handleNext}
-          className="rounded-lg bg-[#7c83fd] px-7 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#6870f0] disabled:cursor-not-allowed disabled:bg-[#c7c9f7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
+          className="rounded-lg bg-[#7c83fd] px-7 py-3 text-[15px] font-medium text-white transition-colors hover:bg-[#6870f0] disabled:cursor-not-allowed disabled:bg-[#c7c9f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c83fd]"
         >
           {submitting ? "Илгээж байна…" : isLast ? "Дуусгах" : "Үргэлжлүүлэх"}
         </button>
@@ -160,7 +161,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
 function StatusScreen({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
-      <div className="max-w-[480px] leading-relaxed text-[#5b5b6b]">{children}</div>
+      <div className="max-w-120 leading-relaxed text-[#5b5b6b]">{children}</div>
     </main>
   );
 }

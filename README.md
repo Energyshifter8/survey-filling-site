@@ -72,9 +72,11 @@ Response доторх дотоод талбарын нэрс дараах бай
 | `question.content`, `option.content`, `option.id` | ❌ TODO — git түүхэнд байсан өмнөх (яг энэ backend-тэй ажиллаж байсан) хувилбараас зээлсэн хамгийн боломжит таамаг, гэхдээ энэ session-д бодит staging хариугаар шалгаагдаагүй |
 | `participate`/`check-pass` хүсэлтийн body (deviceId/browser шаардах эсэх) | ❌ TODO — өгөгдсөн reference client body-гүй гэж үзсэн; хэрэв "аль хэдийн бөглөсөн" төлөвийг device-ээр ялгах шаардлагатай бол backend body хүлээж авдаг байж болзошгүй |
 | `submit`-ийн body бүтэц (`templateQuestionAnswers`/`customQuestionAnswers`) | ❌ TODO — хамгийн баталгаагүй хэсэг |
+| `GET /s/{shortUrl}` бодит response (2026-09-02) | ⚠️ **Блоклогдсон** — бодит `shortUrl` (`Ew3kamqxsflGK6ly1H7p0`)-аар ч curl хийхэд `HTTP 401`, `Content-Length: 0` буцаасан. Доорх "Мэдэгдэж буй хязгаарлалт"-ыг үз. |
 
-**Бодит `shortUrl` жишээ өгөгдмөгц дээрхийг бүгдийг нь staging руу бодит
-дуудлага хийж баталгаажуулж, энэ хүснэгтийг шинэчлэх шаардлагатай.**
+**Бодит `shortUrl` жишээ өгөгдсөн ч GET /s/{shortUrl} 401 буцаасан тул цааш
+(participate/check-pass/questions/submit) баталгаажуулах боломжгүй байна —
+дараагийн хэсгийг үз.**
 
 ## Гараар туршиж баталгаажуулсан зүйлс
 
