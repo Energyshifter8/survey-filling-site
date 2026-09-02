@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { checkPass, getSurveyQuestions, participateSurvey, resolveShortUrl, submitSurveyResponse } from "@/lib/api/survey";
 import type { AnswerChoice, QuestionWithRule, SurveyResponseSubmission } from "@/lib/api/types";
@@ -21,9 +21,19 @@ export function useSurveyMeta(shortUrl: string) {
   const [loading, setLoading] = useState(!meta);
   const [error, setError] = useState<unknown>(null);
 
+  // StrictMode (dev, App Router-д анхдагч асаалттай) mount effect бүрийг
+  // 2 удаа дуудна (mount → cleanup → дахин mount, бүгд нэг синхрон tick дотор).
+  // `fetchedForRef`-ээр аль шортУрл-аар аль хэдийн бодит сүлжээний дуудлага
+  // эхлүүлснээ хадгалж, StrictMode-ийн 2 дахь дуудлага дээр дахин эхлүүлэхгүй
+  // байхаар хамгаална — cleanup-ээр "cancelled" болгодог хуучин арга биш, учир
+  // нь энэ ref нь тухайн mount/unmount мөчлөгөөр дахин тохируулагддаггүй тул
+  // ганц (эхний) бодит дуудлагынхаа үр дүнг найдвартай ашиглаж чадна.
+  const fetchedForRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (loadSurveyMeta(shortUrl)) return;
-    let cancelled = false;
+    if (fetchedForRef.current === shortUrl) return;
+    fetchedForRef.current = shortUrl;
 
     (async () => {
       setLoading(true);
@@ -31,20 +41,16 @@ export function useSurveyMeta(shortUrl: string) {
       try {
         const surveyId = await resolveShortUrl(shortUrl);
         const { survey, taken } = await participateSurvey(surveyId, getBrowserInfo());
-        if (cancelled) return;
+        if (fetchedForRef.current !== shortUrl) return; // өөр shortUrl-аар дараа нь дахин эхэлсэн бол хуучрал
         const next: SurveyMeta = { surveyId, survey, taken };
         saveSurveyMeta(shortUrl, next);
         setMeta(next);
       } catch (err) {
-        if (!cancelled) setError(err);
+        if (fetchedForRef.current === shortUrl) setError(err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (fetchedForRef.current === shortUrl) setLoading(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [shortUrl]);
 
   return { meta, loading, error };
@@ -67,8 +73,15 @@ export function useSurveyQuestions(shortUrl: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
+  // useSurveyMeta-тай адил шалтгаанаар (StrictMode давхар mount) — `fetchedForRef`
+  // ижил shortUrl-аар GET /questions-ыг дахин эхлүүлэхээс сэргийлнэ. Үүнгүйгээр
+  // ижил Bearer token-оор 2 бодит сүлжээний дуудлага явдаг байсан (нэг session-д
+  // "questions" 2 удаа дуудагдах" гэж ажиглагдсан шалтгаан — 2026-09).
+  const fetchedForRef = useRef<string | null>(null);
+
   useEffect(() => {
-    let cancelled = false;
+    if (fetchedForRef.current === shortUrl) return;
+    fetchedForRef.current = shortUrl;
 
     (async () => {
       const session = loadSurveySession(shortUrl);
@@ -80,7 +93,7 @@ export function useSurveyQuestions(shortUrl: string) {
 
       try {
         const dto = await getSurveyQuestions(session.responseSessionId, session.token);
-        if (cancelled) return;
+        if (fetchedForRef.current !== shortUrl) return;
         const ordered = [
           ...(dto.customQuestionFirst ?? []),
           ...dto.questions,
@@ -88,7 +101,7 @@ export function useSurveyQuestions(shortUrl: string) {
         ].sort((a, b) => a.questionOrder - b.questionOrder);
         setQuestions(ordered);
       } catch (err) {
-        if (!cancelled) {
+        if (fetchedForRef.current === shortUrl) {
           if (err instanceof ApiError && err.status === 401) {
             // Token хугацаа дууссан — хуучирсан session/progress-ийг цэвэрлээд
             // эхнээс (intro) эхлүүлнэ (page component "SESSION_EXPIRED"-г барьж redirect хийнэ).
@@ -100,13 +113,9 @@ export function useSurveyQuestions(shortUrl: string) {
           }
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (fetchedForRef.current === shortUrl) setLoading(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [shortUrl]);
 
   async function submit(answers: Record<number, { optionId?: number; questionType: QuestionWithRule["questionType"]; section?: QuestionWithRule["section"]; startedAt: number }>) {

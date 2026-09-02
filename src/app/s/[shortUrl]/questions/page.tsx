@@ -25,8 +25,16 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Эхний mount дээр current/answers аль хэдийн sessionStorage-аас (эсвэл
+  // хоосон) уншигдсан утга тул тэрийг шууд буцаагаад бичих шаардлагагүй —
+  // зөвхөн хэрэглэгч бодитоор сонголт хийж/асуулт солиход л дахин бичнэ.
+  const skipFirstPersistRef = useRef(true);
   useEffect(() => {
     if (done) return;
+    if (skipFirstPersistRef.current) {
+      skipFirstPersistRef.current = false;
+      return;
+    }
     saveSurveyProgress(shortUrl, { current, answers });
   }, [shortUrl, current, answers, done]);
 
