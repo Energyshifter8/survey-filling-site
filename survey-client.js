@@ -1,11 +1,3 @@
-// survey-client.js
-// Динамик судалгаа (survey) бөглөх урсгалыг удирдах жижиг, framework-agnostic клиент.
-// React/Vue/vanilla ямар ч frontend дээр импортлоод ашиглаж болно.
-//
-// АНХААРАХ: доорх зам (path) болон талбарын нэрүүд (field names) нь
-// browser DevTools дээрх Network tab-аас ажиглагдсан баримтад үндэслэсэн
-// таамаглал юм. Өөрийн backend/staging орчны бодит Headers + Payload +
-// Response-той тулгаж, шаардлагатай бол path/field нэрсийг өөрчлөөрэй.
 
 const API_BASE = "https://your-api-domain.example.com"; // TODO: өөрийн backend/staging URL-аар солих
 
