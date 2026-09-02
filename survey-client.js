@@ -5,11 +5,17 @@
 // хэвээрээ баталгаажаагүй тул "// TODO: confirm" тэмдэглэсэн газруудыг
 // Swagger UI дээр endpoint бүрийг нээж (">" chevron) шалгаарай.
 
-// .env.local-д тохируулна: NEXT_PUBLIC_SURVEY_API_BASE=https://survey-staging.mindxplus.com
-// Client component-с (browser) дуудагдах тул NEXT_PUBLIC_ угтвар ЗААВАЛ хэрэгтэй,
-// эс бөгөөс Next.js энэ env var-ыг browser bundle-д оруулахгүй.
+// Таны project-д аль хэдийн байсан NEXT_PUBLIC_API_URL-г тэргүүлж уншина
+// (жинхэнэ backend, жишээ: https://service-staging.mindxplus.com).
+// NEXT_PUBLIC_SURVEY_API_BASE-ийг зөвхөн fallback болгож үлдээв — ирээдүйд
+// хоёр хувьсагч зөрчилдөхөөс сэргийлж, аль болох зөвхөн NEXT_PUBLIC_API_URL-г
+// ганцхан газар (энд) тохируулж ашиглахыг зөвлөж байна.
+// Анхаар: survey-staging.mindxplus.com бол өөрөө АМЬД FRONTEND (API биш) гэдэг
+// нь баталгаажсан тул үүнийг API_BASE болгож бүү ашигла.
 const API_BASE =
-  process.env.NEXT_PUBLIC_SURVEY_API_BASE || "https://your-api-domain.example.com";
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_SURVEY_API_BASE ||
+  "https://your-api-domain.example.com";
 
 class SurveyClient {
   constructor(shortUrl, baseUrl = API_BASE) {
