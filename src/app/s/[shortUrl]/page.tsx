@@ -64,7 +64,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-16">
+    <main className="flex flex-1 flex-col items-center justify-center bg-white px-4 py-16">
       <div className="w-full max-w-140">
         {step === "intro" && (
           <div className="space-y-6">
@@ -140,7 +140,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 
 function StatusScreen({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-16">
+    <main className="flex flex-1 flex-col items-center justify-center bg-white px-4 py-16">
       <p className="max-w-120 text-center leading-relaxed text-[#5b5b6b]">{children}</p>
     </main>
   );

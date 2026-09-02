@@ -99,7 +99,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center px-4 py-16">
+    <main className="flex flex-1 flex-col items-center bg-white px-4 py-16">
       <div className="w-full max-w-140 space-y-8">
         <div className="h-1.5 rounded-full bg-[#eceef7]">
           <div
@@ -160,7 +160,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
 
 function StatusScreen({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
+    <main className="flex flex-1 flex-col items-center justify-center bg-white px-4 py-16 text-center">
       <div className="max-w-120 leading-relaxed text-[#5b5b6b]">{children}</div>
     </main>
   );
