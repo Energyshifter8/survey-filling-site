@@ -40,9 +40,7 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
         className={`top-1/2 left-1/2 flex w-full max-w-[600px] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 rounded-2xl bg-white p-0 shadow-[0px_10px_15px_rgba(0,0,0,0.25),0px_4px_6px_-4px_rgba(0,0,0,0.1)] sm:max-w-[600px] ${manrope.className}`}
       >
         <div className="flex w-full shrink-0 items-center justify-between px-6 py-4">
-          <DialogTitle className="text-[20px] font-semibold leading-6 text-[#10182B]">
-            Зөвшөөрөл өгөх
-          </DialogTitle>
+          <DialogTitle className="text-[20px] font-semibold leading-6 text-[#10182B]">Зөвшөөрөл өгөх</DialogTitle>
           <DialogDescription className="sr-only">
             Судалгаанд оролцохын өмнө зөвшөөрлийн нөхцлүүдтэй танилцана уу.
           </DialogDescription>
