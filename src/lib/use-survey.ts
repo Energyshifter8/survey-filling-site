@@ -23,8 +23,16 @@ import {
 
 /** shortUrl-ийг судалгааны мэдээлэл рүү задлана. Intro/consent хуудсанд ашиглана. */
 export function useSurveyMeta(shortUrl: string) {
-  const [meta, setMeta] = useState<SurveyMeta | null>(() => loadSurveyMeta(shortUrl));
-  const [loading, setLoading] = useState(!meta);
+  // АНХААР (hydration): sessionStorage-ыг lazy useState initializer дотор шууд
+  // уншиж болохгүй (server дээр window байхгүй тул `loadSurveyMeta` үргэлж
+  // null буцаадаг, харин client дээр — ялангуяа хуудсыг дахин ачаалахад,
+  // sessionStorage-д кэш аль хэдийн байвал — шууд бодит утга буцаадаг тул
+  // server/client-ийн эхний render зөрж "Hydration failed" алдаа шидсэн,
+  // 2026-09-03: /s/[shortUrl] дээр бодитоор тохиолдсон). Тиймээс энд ч /end
+  // хуудасны адил зарчмаар null/true-ээр эхлээд, mount-ын client-only
+  // useEffect дотор л sessionStorage-аас уншина.
+  const [meta, setMeta] = useState<SurveyMeta | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
   // StrictMode (dev, App Router-д анхдагч асаалттай) mount effect бүрийг
@@ -37,7 +45,12 @@ export function useSurveyMeta(shortUrl: string) {
   const fetchedForRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (loadSurveyMeta(shortUrl)) return;
+    const cached = loadSurveyMeta(shortUrl);
+    if (cached) {
+      setMeta(cached);
+      setLoading(false);
+      return;
+    }
     if (fetchedForRef.current === shortUrl) return;
     fetchedForRef.current = shortUrl;
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { QuestionOptionDTO, QuestionType } from "@/lib/api/types";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
 import { loadSurveyMeta, loadSurveyProgress, saveSurveyProgress } from "@/lib/survey-session";
@@ -20,6 +21,13 @@ type LocalAnswer = { optionId?: number };
 const AUTO_ADVANCE_TYPES = new Set<QuestionType>(["SINGLE_CHOICE", "STAR_RATING", "NUMBER_RATING"]);
 const AUTO_ADVANCE_DELAY_MS = 350;
 
+// "Хурдан хариулагч" анхааруулга: сүүлийн N хариулт (асуултаас асуулт руу
+// шилжсэн мөч бүр) хамтдаа энэ хугацаанаас бага зайтай өгөгдвол — уншиж
+// бодохгүйгээр дараалан дарж байгааг илтгэнэ. Backend рүү бичигдэхгүй,
+// зөвхөн клиент талын нэг удаагийн зөөлөн nudge (доорх FAST_ANSWER_* тогтмолуудыг үз).
+const FAST_ANSWER_WINDOW = 4;
+const FAST_ANSWER_THRESHOLD_MS = 3000;
+
 function sortByOrder(options: QuestionOptionDTO[] | undefined): QuestionOptionDTO[] {
   return [...(options ?? [])].sort((a, b) => a.order - b.order);
 }
@@ -33,17 +41,34 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   // category талбар БИШ (тийм зүйл байхгүй), харин survey.pages.START[0].title-ээс
   // ирдэг тул нэг л удаа intro хуудаснаас cache-лэгдсэн meta-аас уншина
   // (бүх асуултын дэлгэц дээр тогтмол header болгож харуулна).
-  const [surveyTitle] = useState(() => loadSurveyMeta(shortUrl)?.survey.pages?.START?.[0]?.title);
-
-  // Refresh хийхэд асуулт 1-ээс дахин эхлэхгүй байхын тулд хадгалсан
-  // progress-оор (байвал) эхлэл болгоно.
-  const [current, setCurrent] = useState(() => loadSurveyProgress(shortUrl)?.current ?? 0);
-  const [answers, setAnswers] = useState<Record<number, LocalAnswer>>(
-    () => loadSurveyProgress(shortUrl)?.answers ?? {},
-  );
+  //
+  // АНХААР (hydration): дээрх (surveyTitle) болон доорх (current/answers)
+  // бүгд өмнө нь useState lazy initializer дотор шууд sessionStorage уншдаг
+  // байсан — server дээр (window байхгүй) үргэлж хоосон/анхны утга буцаадаг
+  // ч client дээр (refresh хийхэд, progress аль хэдийн хадгалагдсан бол)
+  // шууд бодит утга буцаадаг тул эхний render server/client хооронд зөрж
+  // "Hydration failed" алдаа шидсэн (2026-09-03: /s/[shortUrl]-д яг ижил
+  // шалтгаанаар тохиолдсоныг src/lib/use-survey.ts-ийн useSurveyMeta-д
+  // зассан — энд ч мөн адил зарчмаар null/анхны утгаар эхлээд, mount-ын
+  // client-only useEffect дотор л sessionStorage-аас уншина.
+  const [surveyTitle, setSurveyTitle] = useState<string | undefined>(undefined);
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, LocalAnswer>>({});
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    setSurveyTitle(loadSurveyMeta(shortUrl)?.survey.pages?.START?.[0]?.title);
+    const progress = loadSurveyProgress(shortUrl);
+    if (progress) {
+      setCurrent(progress.current);
+      setAnswers(progress.answers);
+    }
+  }, [shortUrl]);
 
   // Эхний mount дээр current/answers аль хэдийн sessionStorage-аас (эсвэл
   // хоосон) уншигдсан утга тул тэрийг шууд буцаагаад бичих шаардлагагүй —
@@ -73,6 +98,32 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
       if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     };
   }, [current]);
+
+  // "Хурдан хариулагч" бурст илрүүлэлт: сүүлийн FAST_ANSWER_WINDOW ширхэг
+  // "асуултаас гарсан" timestamp-ыг rolling байдлаар хадгална (re-render
+  // шаардлагагүй тул useState биш useRef). `warnedRef`-ээр нэг бурст дотор
+  // давхар toast харуулахаас сэргийлнэ — хурд буурмагц (доорх else) дахин
+  // false болгож, дараагийн шинэ бурст дээр дахин анхааруулж чадна.
+  const answerTimestampsRef = useRef<number[]>([]);
+  const fastBurstWarnedRef = useRef(false);
+  function noteQuestionAdvanced() {
+    const stamps = answerTimestampsRef.current;
+    stamps.push(Date.now());
+    if (stamps.length > FAST_ANSWER_WINDOW) stamps.shift();
+    if (stamps.length < FAST_ANSWER_WINDOW) return;
+
+    const span = stamps[stamps.length - 1] - stamps[0];
+    if (span <= FAST_ANSWER_THRESHOLD_MS) {
+      if (!fastBurstWarnedRef.current) {
+        fastBurstWarnedRef.current = true;
+        toast("Хариултаа тайвнаар бодоод сонгоорой", {
+          description: "Сүүлийн хэдэн асуултад маш хурдан хариулж байна шиг байна.",
+        });
+      }
+    } else {
+      fastBurstWarnedRef.current = false;
+    }
+  }
 
   const isSessionExpired = error instanceof Error && error.message === "SESSION_EXPIRED";
   useEffect(() => {
@@ -138,6 +189,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     if (isAutoAdvanceType && !isLast) {
       if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
       autoAdvanceTimeoutRef.current = setTimeout(() => {
+        noteQuestionAdvanced();
         setCurrent((c) => c + 1);
       }, AUTO_ADVANCE_DELAY_MS);
     }
@@ -152,9 +204,11 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   async function handleNext() {
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     if (!isLast) {
+      noteQuestionAdvanced();
       setCurrent((c) => c + 1);
       return;
     }
+    noteQuestionAdvanced();
     setSubmitting(true);
     setSubmitError(null);
     try {
