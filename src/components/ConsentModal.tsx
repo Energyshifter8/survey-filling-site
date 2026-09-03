@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { CONSENT_BASE_CLAUSES, CONSENT_DETAIL_SECTIONS } from "@/lib/consent-content";
+import { manrope } from "@/lib/fonts";
 
 // Бодит reference (survey-staging.mindxplus.com) дээрхтэй тулгаж сайжруулсан:
 // - checkbox мөр дарахад л нээгддэг (Цааш товч дарахад биш)
@@ -14,6 +15,14 @@ import { CONSENT_BASE_CLAUSES, CONSENT_DETAIL_SECTIONS } from "@/lib/consent-con
 // гараар бичсэн role/aria-modal/backdrop stopPropagation/biome-ignore-үүд
 // шаардлагагүй болсон. Visual нь өмнөхтэй яг адилхан — зөвхөн className-аар
 // override хийсэн.
+//
+// Анхаар: Dialog нь агуулгаа Portal-оор document.body руу гаргадаг тул энэ
+// компонент цаашид `<main className={manrope.className}>`-ийн дотор дүрслэгдэж
+// байсан ч гэсэн тэрхүү эцэг элементээсээ фонтоо inherit хийхээ больсон
+// (Portal хийгдэхээс өмнө нэг DOM мод дотор байсан тул анхаарагдаагүй асуудал —
+// Manrope-ийн оронд browser-ийн default sans-serif руу унасан, тухайлбар
+// font-semibold-ийн жин өөр харагдаж байсан). Тиймээс DialogContent дээр
+// manrope.className-г шууд өгч байна.
 interface ConsentModalProps {
   open: boolean;
   onClose: () => void;
@@ -28,7 +37,7 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
       <DialogContent
         showCloseButton={false}
         overlayClassName="bg-black/50 supports-backdrop-filter:backdrop-blur-none"
-        className="top-1/2 left-1/2 flex w-full max-w-[600px] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 rounded-2xl bg-white p-0 shadow-[0px_10px_15px_rgba(0,0,0,0.25),0px_4px_6px_-4px_rgba(0,0,0,0.1)] sm:max-w-[600px]"
+        className={`top-1/2 left-1/2 flex w-full max-w-[600px] -translate-x-1/2 -translate-y-1/2 flex-col gap-0 rounded-2xl bg-white p-0 shadow-[0px_10px_15px_rgba(0,0,0,0.25),0px_4px_6px_-4px_rgba(0,0,0,0.1)] sm:max-w-[600px] ${manrope.className}`}
       >
         <div className="flex w-full shrink-0 items-center justify-between px-6 py-4">
           <DialogTitle className="text-[20px] font-semibold leading-6 text-[#10182B]">

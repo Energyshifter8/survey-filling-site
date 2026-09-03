@@ -1,6 +1,5 @@
 "use client";
 
-import { Manrope } from "next/font/google";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 import ConsentModal from "@/components/ConsentModal";
@@ -11,6 +10,7 @@ import FontSizeToggle, {
   META_SIZE_CLASSES,
 } from "@/components/FontSizeToggle";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
+import { manrope } from "@/lib/fonts";
 import { trackEvent } from "@/lib/telemetry";
 import { startSurveySession, useSurveyMeta } from "@/lib/use-survey";
 
@@ -22,8 +22,9 @@ import { startSurveySession, useSurveyMeta } from "@/lib/use-survey";
 // opacity-60 нэмсэн — reference disabled/enabled хооронд ЯМАР Ч визуал ялгаагүй
 // (зөвхөн cursor:not-allowed), гэхдээ энэ нь хэрэглэгчид "чекбокс дараагүй тул
 // товч идэвхгүй байна" гэдгийг харуулахгүй тул a11y-ийн үүднээс илүү сайн гэж
-// үзсэн.
-const manrope = Manrope({ subsets: ["latin", "cyrillic"], weight: ["500", "600", "700"] });
+// үзсэн. (Manrope-ийн тодорхойлолт @/lib/fonts-д шилжсэн — ConsentModal Dialog
+// болж Portal-оор document.body руу гарсны дараа энэ фонтыг эцэг элементээсээ
+// inherit хийхээ больсон тул хуваалцаж ашиглах шаардлагатай болсон.)
 
 type Step = "intro" | "consent";
 
