@@ -146,3 +146,13 @@ export interface SurveyResponseSubmission {
   sessionId: string;
   surveyId: string;
 }
+
+// confirmed 2026-09-03: survey-staging.mindxplus.com-ийн /s/{id}/end route-ийн
+// бодит JS bundle-аас (`/public/survey/email` дуудлагыг шууд бичсэн функц)
+// уншсан — талбарын нэр "responseSessionId" БИШ, "responseId" (ижил утгатай:
+// check-pass-аас гарсан responseSessionId-г л дамжуулдаг).
+export interface SurveyEmailRequest {
+  responseId: string;
+  surveyId: string;
+  email: string;
+}

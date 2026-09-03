@@ -1,6 +1,7 @@
 import { apiRequest, apiRequestText } from "@/lib/api/client";
 import type {
   BrowserInfo,
+  SurveyEmailRequest,
   SurveyQuestionsDTO,
   SurveyResponseSubmission,
   SurveyToken,
@@ -54,5 +55,17 @@ export function submitSurveyResponse(
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: submission,
+  });
+}
+
+/** 6. (сонголттой) POST /public/survey/email — Bearer шаардсан, зам дотор параметргүй
+ *  (бусад endpoint-уудаас ялгаатай, {responseId}-г path биш body-д дамжуулна).
+ *  Body: { responseId, surveyId, email } — survey-staging.mindxplus.com-ийн
+ *  /s/{id}/end route-ийн бодит JS bundle-аас баталгаажсан (2026-09-03). */
+export function requestSurveyResultsByEmail(token: string, body: SurveyEmailRequest): Promise<unknown> {
+  return apiRequest("/public/survey/email", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body,
   });
 }

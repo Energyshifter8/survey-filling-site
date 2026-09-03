@@ -171,8 +171,14 @@ export function useSurveyQuestions(shortUrl: string) {
       surveyId: meta?.surveyId ?? "",
     };
     await submitSurveyResponse(session.responseSessionId, session.token, submission);
-    // Амжилттай илгээгдмэгц үргэлжлүүлэх зүйл алга — session/progress-ийг цэвэрлэнэ.
-    clearSurveySession(shortUrl);
+    // Reference (survey-staging.mindxplus.com)-ийн бодит bundle-аар баталгаажсан
+    // зарчим: submit амжилттай болмогц зөвхөн асуулт бүрийн progress-ийг устгана
+    // (энэ хойшид хэрэггүй) — session (responseSessionId/token)-ыг ЭНД БҮҮ устга.
+    // /end хуудас "Хариу авах" (POST /public/survey/email)-д яг энэ session
+    // (responseId/token) шаардлагатай тул submit амжилттай болмогц шууд
+    // устгачихвал email хуудсанд хүрэхэд session олдохгүй болно. Session-ыг зөвхөн
+    // /end хуудсан дээр email амжилттай илгээгдэх (эсвэл хэрэглэгч алгасах)
+    // үед л устгана (тэнд clearSurveySession дуудна).
     clearSurveyProgress(shortUrl);
   }
 

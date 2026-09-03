@@ -115,12 +115,10 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   }
 
   if (done) {
-    return (
-      <StatusScreen>
-        <h1 className="mb-2 text-2xl font-medium text-[#1a1a2e]">Баярлалаа!</h1>
-        <p>Таны хариулт амжилттай илгээгдлээ.</p>
-      </StatusScreen>
-    );
+    // router.replace(`/s/${shortUrl}/end`) аль хэдийн дуудагдсан — энэ бол зөвхөн
+    // тухайн route шилжих богино зуурын transition (жинхэнэ "Баярлалаа" контент
+    // /end route-д pages.END-ээс dynamic ирнэ).
+    return <StatusScreen>Дуусгаж байна…</StatusScreen>;
   }
 
   const allQuestions = questions;
@@ -174,10 +172,15 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
       trackEvent("survey_submit_attempt", { shortUrl });
       await submit(payload);
       setDone(true);
+      // Одоо бодит /end route руу шилжинэ (өмнө нь зөвхөн local "done" төлөв
+      // харуулдаг байсныг өөрчилсөн) — тэнд pages.END-ийн гарчиг/тайлбар,
+      // мөн (survey.hasAssessment бол) үр дүнгээ имэйлээр авах форм харагдана.
+      // replace ашигласан нь буцах товчоор дуусгасан судалгаа руу дахин
+      // орохоос сэргийлнэ (reference push ашигладаг ч энд зориудаар өөр).
+      router.replace(`/s/${shortUrl}/end`);
     } catch (err) {
       // submitSurveyResponse — Bearer token-той дуудлага.
       setSubmitError(getFriendlyErrorMessage(err, "authenticated"));
-    } finally {
       setSubmitting(false);
     }
   }
