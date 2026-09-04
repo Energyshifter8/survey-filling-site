@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { BODY_SIZE_CLASSES, META_SIZE_CLASSES } from "@/components/FontSizeToggle";
 import type { QuestionOptionDTO, QuestionType, QuestionWithRule } from "@/lib/api/types";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
+import { useFontSize } from "@/lib/font-size-context";
 import { loadSurveyMeta, loadSurveyProgress, saveSurveyProgress } from "@/lib/survey-session";
 import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
 import { trackEvent } from "@/lib/telemetry";
@@ -64,6 +66,11 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   const { shortUrl } = use(params);
   const router = useRouter();
   const { questions, loading, error, submit } = useSurveyQuestions(shortUrl);
+  // /s/[shortUrl]/layout.tsx-ийн <FontSizeProvider>-ээс — intro/consent
+  // хуудастай ижил (localStorage-д хадгалагдсан) фонт хэмжээг хуваалцана
+  // (@/components/FontSizeToggle-ийн HEADING_SIZE_CLASSES/BODY_SIZE_CLASSES/
+  // META_SIZE_CLASSES-ийг доор ашиглав).
+  const { level: fontLevel } = useFontSize();
 
   // Судалгааны гарчиг ("Ажилтны сайн сайхан байдал" мэт) — асуулт бүр дээрх
   // category талбар БИШ (тийм зүйл байхгүй), харин survey.pages.START[0].title-ээс
@@ -291,7 +298,9 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     <main className="flex flex-1 flex-col items-center bg-[var(--survey-bg)] px-4 py-16" style={themeVars}>
       <div className="w-full max-w-140 space-y-8">
         <div className="space-y-2">
-          {surveyTitle && <p className="text-sm font-medium text-[var(--survey-desc)]">{surveyTitle}</p>}
+          {surveyTitle && (
+            <p className={`font-medium text-[var(--survey-desc)] ${META_SIZE_CLASSES[fontLevel]}`}>{surveyTitle}</p>
+          )}
           <div className="flex items-center gap-3">
             <div className="h-1.5 flex-1 rounded-full bg-[var(--survey-progress-bg)]">
               <div
@@ -310,7 +319,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
             const globalIndex = currentBatchIndex * pageSize + indexInBatch;
             return (
               <div key={question.id} className="space-y-4">
-                <h2 className="text-lg font-medium leading-relaxed text-[var(--survey-text)]">
+                <h2 className={`font-medium leading-relaxed text-[var(--survey-text)] ${BODY_SIZE_CLASSES[fontLevel]}`}>
                   {globalIndex + 1}. {question.content}
                   {question.required && <span className="ml-1 text-red-500">*</span>}
                 </h2>
@@ -323,6 +332,8 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                         <label
                           key={option.id}
                           className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3.5 transition-colors ${
+                            BODY_SIZE_CLASSES[fontLevel]
+                          } ${
                             selected
                               ? "border-[var(--survey-option-border-active)] bg-[var(--survey-option-bg-active)] text-[var(--survey-option-text-active)]"
                               : "border-[var(--survey-option-border)] bg-[var(--survey-option-bg)] text-[var(--survey-option-text)]"

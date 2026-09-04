@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
+import { BODY_SIZE_CLASSES, HEADING_SIZE_CLASSES } from "@/components/FontSizeToggle";
 import { requestSurveyResultsByEmail } from "@/lib/api/survey";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
+import { useFontSize } from "@/lib/font-size-context";
 import { manrope } from "@/lib/fonts";
 import {
   clearSurveySession,
@@ -31,6 +33,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function SurveyEndPage({ params }: { params: Promise<{ shortUrl: string }> }) {
   const { shortUrl } = use(params);
   const router = useRouter();
+  // /s/[shortUrl]/layout.tsx-ийн <FontSizeProvider>-ээс — intro/consent/
+  // questions хуудастай ижил (localStorage-д хадгалагдсан) фонт хэмжээг
+  // хуваалцана.
+  const { level: fontLevel } = useFontSize();
 
   // АНХААР (hydration): sessionStorage-ыг lazy useState initializer дотор
   // шууд уншиж болохгүй — сервер дээр (window байхгүй) initial state
@@ -120,8 +126,10 @@ export default function SurveyEndPage({ params }: { params: Promise<{ shortUrl: 
   return (
     <main className={`flex flex-1 flex-col items-center bg-[#F5F7FF] px-4 py-16 md:px-7.5 ${manrope.className}`}>
       <div className="flex w-full max-w-125 flex-col items-center gap-5 text-center">
-        <h1 className="text-3xl font-semibold leading-tight text-[#10182B] sm:text-4xl">{displayTitle}</h1>
-        <p className="text-base text-[#10182B]">{displayDescription}</p>
+        <h1 className={`font-semibold leading-tight text-[#10182B] ${HEADING_SIZE_CLASSES[fontLevel]}`}>
+          {displayTitle}
+        </h1>
+        <p className={`text-[#10182B] ${BODY_SIZE_CLASSES[fontLevel]}`}>{displayDescription}</p>
 
         {canRequestByEmail && !sent && !skipped && (
           <form onSubmit={handleEmailSubmit} noValidate className="mt-4 flex w-full flex-col items-center gap-2">

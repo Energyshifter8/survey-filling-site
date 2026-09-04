@@ -4,13 +4,9 @@ import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import { use, useState } from "react";
 import ConsentModal from "@/components/ConsentModal";
-import FontSizeToggle, {
-  BODY_SIZE_CLASSES,
-  type FontSizeLevel,
-  HEADING_SIZE_CLASSES,
-  META_SIZE_CLASSES,
-} from "@/components/FontSizeToggle";
+import { BODY_SIZE_CLASSES, HEADING_SIZE_CLASSES, META_SIZE_CLASSES } from "@/components/FontSizeToggle";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
+import { useFontSize } from "@/lib/font-size-context";
 import { manrope } from "@/lib/fonts";
 import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
 import { trackEvent } from "@/lib/telemetry";
@@ -50,7 +46,10 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   const [passCode, setPassCode] = useState("");
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [fontLevel, setFontLevel] = useState<FontSizeLevel>(0);
+  // Фонт хэмжээ endээс биш, /s/[shortUrl]/layout.tsx-д тавьсан
+  // <FontSizeProvider>-ээс ирнэ — бүх дэд page (энэ + questions + end)
+  // ижил (localStorage-д хадгалагдсан) хэмжээг хуваалцана.
+  const { level: fontLevel } = useFontSize();
 
   if (loading) {
     return <StatusScreen manrope={manrope.className}>Судалгааг ачааллаж байна…</StatusScreen>;
@@ -112,10 +111,6 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
       className={`flex flex-1 flex-col items-center bg-[var(--survey-bg)] px-4 py-3 md:px-7.5 md:py-5 ${manrope.className}`}
       style={themeVars}
     >
-      <div className="flex w-full justify-end">
-        <FontSizeToggle level={fontLevel} onChange={setFontLevel} />
-      </div>
-
       <div className="flex w-full flex-1 flex-col items-center justify-center">
         <div className="w-full max-w-200">
           {step === "intro" && (
