@@ -82,11 +82,16 @@ export function clearSurveySession(shortUrl: string) {
   safeRemove(sessionKey(shortUrl));
 }
 
-// Асуулт дундаас refresh хийхэд эхнээс эхлэхгүй байхын тулд одоогийн асуултын
+// Асуулт дундаас refresh хийхэд эхнээс эхлэхгүй байхын тулд одоогийн БАТЧийн
 // дугаар + сонгосон хариултуудыг тусад нь хадгална (session/token-оос
 // тусдаа — эдгээр нь UI-only progress, backend rүү харагдахгүй).
+//
+// ЗАСВАР (2026-09-04): "current" нь ганц асуултын index байсан — survey.pageSize
+// (одоо 10 хүртэл байж болох, src/lib/api/types.ts-ийг үз) асуултыг НЭГ дор
+// батчлаж render хийдэг болсонтой холбоотой "currentBatchIndex" (батчийн
+// index, асуултын index БИШ) болгож нэрийг өөрчилсөн.
 export interface SurveyProgress {
-  current: number;
+  currentBatchIndex: number;
   answers: Record<number, { optionId?: number }>;
 }
 

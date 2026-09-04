@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { CSSProperties } from "react";
 import { use, useState } from "react";
 import ConsentModal from "@/components/ConsentModal";
 import FontSizeToggle, {
@@ -11,20 +12,30 @@ import FontSizeToggle, {
 } from "@/components/FontSizeToggle";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
 import { manrope } from "@/lib/fonts";
+import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
 import { trackEvent } from "@/lib/telemetry";
 import { startSurveySession, useSurveyMeta } from "@/lib/use-survey";
 
-// Typography/өнгө/spacing — survey-staging.mindxplus.com (бодит reference)-тэй
-// тулгаж тохируулсан (2026-09): font Manrope, bg #F5F7FF, үндсэн текст #10182B,
-// хоёрдогч текст #637389, accent товч #8CA9FF (тухайн үеийн даалгаварт дурдсан
-// #7C83FD биш — бодит хэрэглэгддэг өнгө нь #8CA9FF гэдгийг DevTools-оор
-// баталгаажуулсан). Ганц зориудаар ялгасан зүйл: disabled товчинд бид
-// opacity-60 нэмсэн — reference disabled/enabled хооронд ЯМАР Ч визуал ялгаагүй
-// (зөвхөн cursor:not-allowed), гэхдээ энэ нь хэрэглэгчид "чекбокс дараагүй тул
-// товч идэвхгүй байна" гэдгийг харуулахгүй тул a11y-ийн үүднээс илүү сайн гэж
-// үзсэн. (Manrope-ийн тодорхойлолт @/lib/fonts-д шилжсэн — ConsentModal Dialog
-// болж Portal-оор document.body руу гарсны дараа энэ фонтыг эцэг элементээсээ
-// inherit хийхээ больсон тул хуваалцаж ашиглах шаардлагатай болсон.)
+// Typography/spacing — survey-staging.mindxplus.com (бодит reference)-тэй
+// тулгаж тохируулсан (2026-09): font Manrope.
+//
+// ЗАСВАР (2026-09-04): Өнгө (bg/text/товч) урьд нь энд hardcode хийсэн байсан
+// (bg #F5F7FF, текст #10182B, accent товч #8CA9FF) — эдгээр нь survey.design.themeType-ээс
+// уншиж, @/lib/survey-theme-ийн CSS custom property болгож тараадаг боллоо
+// (доорхыг үз). #F5F7FF/#10182B/#8CA9FF нь санамсаргүй давхцал БИШ — яг LIGHT
+// theme-ийн утгууд, тиймээс design/themeType алга үед харагдах зүйл өөрчлөгдөхгүй
+// (fallback = LIGHT, @/lib/survey-theme-ийг үз). Ганц зориудаар ялгасан зүйл:
+// disabled товчинд бид opacity-60 нэмсэн — reference disabled/enabled хооронд
+// ЯМАР Ч визуал ялгаагүй (зөвхөн cursor:not-allowed), гэхдээ энэ нь хэрэглэгчид
+// "чекбокс дараагүй тул товч идэвхгүй байна" гэдгийг харуулахгүй тул a11y-ийн
+// үүднээс илүү сайн гэж үзсэн. (Manrope-ийн тодорхойлолт @/lib/fonts-д
+// шилжсэн — ConsentModal Dialog болж Portal-оор document.body руу гарсны
+// дараа энэ фонтыг эцэг элементээсээ inherit хийхээ больсон тул хуваалцаж
+// ашиглах шаардлагатай болсон. АНХААР: ConsentModal мөн адил Portal-оор
+// document.body руу гардаг тул энэ хуудасны <main> дээр тавьсан CSS custom
+// property-үүд (--survey-*) DOM-ийн cascade-аар тэнд ХҮРЭХГҮЙ — тиймээс
+// ConsentModal-ийн товчны өнгийг доорх theme өөрчлөхгүй, тусад нь themed
+// биш хэвээр үлдсэн.)
 
 type Step = "intro" | "consent";
 
@@ -59,10 +70,11 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   const startPage = survey.pages?.START?.[0];
   const displayTitle = startPage?.title ?? "Судалгаанд оролцох";
   const displayDescription = startPage?.content;
+  const themeVars = surveyThemeCssVars(resolveSurveyTheme(survey.design));
 
   if (taken) {
     return (
-      <StatusScreen manrope={manrope.className}>
+      <StatusScreen manrope={manrope.className} style={themeVars}>
         {displayTitle ? `${displayTitle} — ` : ""}
         Та энэ судалгааг өмнө нь бөглөсөн байна. Баярлалаа!
       </StatusScreen>
@@ -71,7 +83,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 
   if (survey.expired || survey.canParticipate === false) {
     return (
-      <StatusScreen manrope={manrope.className}>
+      <StatusScreen manrope={manrope.className} style={themeVars}>
         {survey.message ?? "Энэ судалгаа одоогоор оролцох боломжгүй байна."}
       </StatusScreen>
     );
@@ -96,7 +108,10 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   }
 
   return (
-    <main className={`flex flex-1 flex-col items-center bg-[#F5F7FF] px-4 py-3 md:px-7.5 md:py-5 ${manrope.className}`}>
+    <main
+      className={`flex flex-1 flex-col items-center bg-[var(--survey-bg)] px-4 py-3 md:px-7.5 md:py-5 ${manrope.className}`}
+      style={themeVars}
+    >
       <div className="flex w-full justify-end">
         <FontSizeToggle level={fontLevel} onChange={setFontLevel} />
       </div>
@@ -105,22 +120,24 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
         <div className="w-full max-w-200">
           {step === "intro" && (
             <div className="flex flex-col items-center gap-5 text-center">
-              <h1 className={`font-semibold leading-tight text-[#10182B] ${HEADING_SIZE_CLASSES[fontLevel]}`}>
+              <h1
+                className={`font-semibold leading-tight text-[var(--survey-text)] ${HEADING_SIZE_CLASSES[fontLevel]}`}
+              >
                 {displayTitle}
               </h1>
               {displayDescription && (
-                <p className={`text-[#10182B] ${BODY_SIZE_CLASSES[fontLevel]}`}>{displayDescription}</p>
+                <p className={`text-[var(--survey-text)] ${BODY_SIZE_CLASSES[fontLevel]}`}>{displayDescription}</p>
               )}
               {survey.creator && (
                 <p className={META_SIZE_CLASSES[fontLevel]}>
-                  <span className="text-[#10182B]">Судалгаа нийтлэгч: </span>
-                  <span className="font-medium italic text-[#10182B]">{survey.creator}</span>
+                  <span className="text-[var(--survey-text)]">Судалгаа нийтлэгч: </span>
+                  <span className="font-medium italic text-[var(--survey-text)]">{survey.creator}</span>
                 </p>
               )}
               <button
                 type="button"
                 onClick={() => setStep("consent")}
-                className="rounded-lg bg-[#8CA9FF] px-6 py-3 text-base font-medium text-white transition-colors hover:bg-[#7396FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8CA9FF]"
+                className="rounded-lg bg-[var(--survey-btn-bg)] px-6 py-3 text-base font-medium text-[var(--survey-btn-text)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-btn-bg)]"
               >
                 Эхлэх
               </button>
@@ -129,10 +146,12 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 
           {step === "consent" && (
             <div className="flex flex-col items-center gap-5 text-center">
-              <h1 className={`font-semibold leading-tight text-[#10182B] ${HEADING_SIZE_CLASSES[fontLevel]}`}>
+              <h1
+                className={`font-semibold leading-tight text-[var(--survey-text)] ${HEADING_SIZE_CLASSES[fontLevel]}`}
+              >
                 {displayTitle}
               </h1>
-              <p className={`text-[#10182B] ${META_SIZE_CLASSES[fontLevel]}`}>
+              <p className={`text-[var(--survey-text)] ${META_SIZE_CLASSES[fontLevel]}`}>
                 {survey.questionCount != null && `${survey.questionCount} асуулт`}
                 {survey.questionCount != null && (survey.minMinutes || survey.maxMinutes) && " | "}
                 {(survey.minMinutes || survey.maxMinutes) &&
@@ -141,7 +160,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 
               {needsPassCode && (
                 <div className="w-full max-w-xs space-y-2 text-left">
-                  <label htmlFor="passCode" className="text-sm font-medium text-[#10182B]">
+                  <label htmlFor="passCode" className="text-sm font-medium text-[var(--survey-text)]">
                     Нэвтрэх код
                   </label>
                   <input
@@ -150,7 +169,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                     value={passCode}
                     onChange={(e) => setPassCode(e.target.value)}
                     placeholder="Нэвтрэх кодоо оруулна уу"
-                    className="w-full rounded-lg border border-[#CBD5E1] px-3.5 py-2.5 text-sm text-[#10182B] outline-none focus-visible:border-[#8CA9FF] focus-visible:ring-2 focus-visible:ring-[#8CA9FF]/40"
+                    className="w-full rounded-lg border border-[var(--survey-option-border)] px-3.5 py-2.5 text-sm text-[var(--survey-text)] outline-none focus-visible:border-[var(--survey-option-border-active)] focus-visible:ring-2 focus-visible:ring-[var(--survey-option-border-active)]/40"
                   />
                 </div>
               )}
@@ -191,7 +210,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                 type="button"
                 disabled={!canContinue}
                 onClick={handleContinue}
-                className="rounded-lg bg-[#8CA9FF] px-6 py-3 text-base font-medium text-white transition-colors hover:bg-[#7396FF] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#8CA9FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8CA9FF]"
+                className="rounded-lg bg-[var(--survey-btn-bg)] px-6 py-3 text-base font-medium text-[var(--survey-btn-text)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-btn-bg)]"
               >
                 {starting ? "Ачаалж байна…" : "Цааш"}
               </button>
@@ -212,10 +231,23 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   );
 }
 
-function StatusScreen({ children, manrope }: { children: React.ReactNode; manrope: string }) {
+function StatusScreen({
+  children,
+  manrope,
+  style,
+}: {
+  children: React.ReactNode;
+  manrope: string;
+  // meta ачаалагдахаас өмнө (loading/error) theme мэдэгдэхгүй тул style
+  // заавал биш — тэр үед hardcode fallback (LIGHT-тэй ижил утга) ашиглана.
+  style?: CSSProperties;
+}) {
   return (
-    <main className={`flex flex-1 flex-col items-center justify-center bg-[#F5F7FF] px-4 py-16 ${manrope}`}>
-      <p className="max-w-120 text-center leading-relaxed text-[#637389]">{children}</p>
+    <main
+      className={`flex flex-1 flex-col items-center justify-center bg-[var(--survey-bg,#F5F7FF)] px-4 py-16 ${manrope}`}
+      style={style}
+    >
+      <p className="max-w-120 text-center leading-relaxed text-[var(--survey-desc,#637389)]">{children}</p>
     </main>
   );
 }
