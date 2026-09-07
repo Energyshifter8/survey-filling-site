@@ -76,8 +76,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   const [themeVars, setThemeVars] = useState(() => surveyThemeCssVars(resolveSurveyTheme(undefined)));
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, LocalAnswer>>({});
-  const [revealedCount, setRevealedCount] = useState<number>(Number.POSITIVE_INFINITY);
-  const [justRevealedId, setJustRevealedId] = useState<number | null>(null);
+  const [scrollTargetId, setScrollTargetId] = useState<number | null>(null);
   const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -105,9 +104,6 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     if (progress) {
       setCurrentBatchIndex(progress.currentBatchIndex);
       setAnswers(progress.answers);
-      setRevealedCount(Number.POSITIVE_INFINITY);
-    } else {
-      setRevealedCount(1);
     }
   }, [shortUrl]);
 
@@ -141,19 +137,11 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     };
   }, [currentBatchIndex]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reads `currentBatch` from this render's closure; `pageSize` covers batch-shape changes.
   useEffect(() => {
-    if (!Number.isFinite(revealedCount)) return;
-    const frontier = currentBatch[revealedCount - 1];
-    if (frontier && !SELECTABLE_TYPES.has(frontier.questionType)) {
-      setRevealedCount(Number.POSITIVE_INFINITY);
-    }
-  }, [revealedCount, currentBatchIndex, pageSize]);
-
-  useEffect(() => {
-    if (justRevealedId == null) return;
-    questionRefs.current[justRevealedId]?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [justRevealedId]);
+    if (scrollTargetId == null) return;
+    questionRefs.current[scrollTargetId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setScrollTargetId(null);
+  }, [scrollTargetId]);
 
   // "Хурдан хариулагч" бурст илрүүлэлт: сүүлийн FAST_ANSWER_WINDOW ширхэг
   // "батч/асуултаас гарсан" timestamp-ыг rolling байдлаар хадгална (re-render
@@ -232,10 +220,9 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     setAnswers((prev) => ({ ...prev, [question.id]: { optionId } }));
 
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
-    if (!SELECTABLE_TYPES.has(question.questionType)) return;
 
     if (!isBatchMode) {
-      if (isLastBatch) return;
+      if (!SELECTABLE_TYPES.has(question.questionType) || isLastBatch) return;
       autoAdvanceTimeoutRef.current = setTimeout(() => {
         noteQuestionAdvanced();
         setCurrentBatchIndex((c) => c + 1);
@@ -243,22 +230,17 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
       return;
     }
 
-    const isFrontier = indexInBatch === revealedCount - 1;
-    const hasNextInBatch = indexInBatch < currentBatch.length - 1;
-    if (!isFrontier || !hasNextInBatch) return;
-
+    if (indexInBatch >= currentBatch.length - 1) return;
     const nextQuestion = currentBatch[indexInBatch + 1];
     autoAdvanceTimeoutRef.current = setTimeout(() => {
       noteQuestionAdvanced();
-      setRevealedCount(indexInBatch + 2);
-      setJustRevealedId(nextQuestion.id);
+      setScrollTargetId(nextQuestion.id);
     }, AUTO_ADVANCE_DELAY_MS);
   }
 
   function handlePrev() {
     if (isFirstBatch) return;
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
-    setRevealedCount(Number.POSITIVE_INFINITY);
     setCurrentBatchIndex((c) => Math.max(0, c - 1));
   }
 
@@ -267,7 +249,6 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     if (!isLastBatch) {
       noteQuestionAdvanced();
-      setRevealedCount(1);
       setCurrentBatchIndex((c) => c + 1);
       return;
     }
@@ -321,7 +302,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
         </div>
 
         <div className="space-y-10">
-          {currentBatch.slice(0, Math.min(revealedCount, currentBatch.length)).map((question, indexInBatch) => {
+          {currentBatch.map((question, indexInBatch) => {
             const globalIndex = currentBatchIndex * pageSize + indexInBatch;
             return (
               <div
@@ -329,7 +310,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                 ref={(el) => {
                   questionRefs.current[question.id] = el;
                 }}
-                className="animate-in fade-in-0 slide-in-from-bottom-3 space-y-4 duration-300 ease-out"
+                className="space-y-4"
               >
                 <h2 className={`font-medium leading-relaxed text-[var(--survey-text)] ${BODY_SIZE_CLASSES[fontLevel]}`}>
                   {globalIndex + 1}. {question.content}
