@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import { use, useState } from "react";
+import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import { BODY_SIZE_CLASSES, HEADING_SIZE_CLASSES, META_SIZE_CLASSES } from "@/components/FontSizeToggle";
+import PasscodeInput from "@/components/PasscodeInput";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
 import { useFontSize } from "@/lib/font-size-context";
 import { manrope } from "@/lib/fonts";
@@ -44,6 +46,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   const [consented, setConsented] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [passCode, setPassCode] = useState("");
+  const [passCodeError, setPassCodeError] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   // Фонт хэмжээ endээс биш, /s/[shortUrl]/layout.tsx-д тавьсан
@@ -89,7 +92,40 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   }
 
   const needsPassCode = Boolean(survey.passCodeProtected);
-  const canContinue = consented && (!needsPassCode || passCode.trim().length > 0) && !starting;
+  const passCodeComplete = passCode.trim().length === 6;
+  // ЗАСВАР (2026-09-07): Нэвтрэх кодны шалгалт (check-pass дуудлага) INTRO
+  // алхмын "Эхлэх" товч руу шилжив (доорх handleIntroStart) — reference
+  // (survey-staging.mindxplus.com)-ийн decompiled bundle-ээр баталгаажсанаар
+  // тэд яг үүнийг хийдэг: 6 нүд бөглөгдмөгц шууд check-pass дуудаж, амжилттай
+  // бол дараагийн алхам руу шилждэг ("Цааш" хүртэл хүлээдэггүй). Иймд энд
+  // canContinue-д passCode-ийн шаардлага дахин орохгүй.
+  const canContinue = consented && !starting;
+
+  async function handleIntroStart() {
+    if (!needsPassCode) {
+      setStep("consent");
+      return;
+    }
+    if (!passCodeComplete) return; // товч disabled тул энд хүрэхгүй ёстой, зөвхөн хамгаалалт
+    setStarting(true);
+    setStartError(null);
+    setPassCodeError(false);
+    try {
+      await startSurveySession(shortUrl, surveyId, passCode.trim());
+      setStep("consent");
+    } catch (err) {
+      // decompiled bundle-ээр баталгаажсан (2026-09-07): буруу код үед
+      // reference улаан хүрээ + toast мессеж ("Судалгаанд оролцох нууц код
+      // буруу байна") харуулдаг, бичсэн орооо цэвэрлэдэггүй (зөвхөн дараагийн
+      // бичилт дээр л алдааны төлөв цэвэрлэгддэг).
+      setPassCodeError(true);
+      const message = getFriendlyErrorMessage(err, "public");
+      setStartError(message);
+      toast.error(message);
+    } finally {
+      setStarting(false);
+    }
+  }
 
   async function handleContinue() {
     if (!canContinue) return;
@@ -129,12 +165,39 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                   <span className="font-medium italic text-[var(--survey-text)]">{survey.creator}</span>
                 </p>
               )}
+
+              {needsPassCode && (
+                <PasscodeInput
+                  value={passCode}
+                  onChange={(next) => {
+                    setPassCode(next);
+                    // Улаан хүрээ (aria-invalid) ба алдааны текст хоёр ЗЭРЭГ
+                    // цэвэрлэгдэх ёстой — эсрэгээр бол хүрээ арилаад доорх
+                    // мессеж хуучин алдаагаа харуулсаар үлдэх зөрчил гарна.
+                    setPassCodeError(false);
+                    setStartError(null);
+                  }}
+                  onSubmit={handleIntroStart}
+                  error={passCodeError}
+                  disabled={starting}
+                />
+              )}
+
+              {startError && <p className="text-sm text-red-600">{startError}</p>}
+
+              {/* ЗОРИУДСАН ЯЛГАА (2026-09-07): decompiled bundle-ээр баталгаажсанаар
+                  reference энэ товчийг 6 нүд бөглөгдөх хүртэл render Ч хийдэггүй
+                  (disabled биш — DOM-д огт байхгүй). Бид үргэлж харагдахаар,
+                  зөвхөн disabled болгож үлдээв — дээрх файлын толгой хэсгийн
+                  a11y-ийн шалтгаантай ижил зарчим (хэрэглэгчид "яагаад
+                  үргэлжлүүлж чадахгүй байна" гэдгийг харуулна). */}
               <button
                 type="button"
-                onClick={() => setStep("consent")}
-                className="rounded-lg bg-[var(--survey-btn-bg)] px-6 py-3 text-base font-medium text-[var(--survey-btn-text)] transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-btn-bg)]"
+                disabled={(needsPassCode && !passCodeComplete) || starting}
+                onClick={handleIntroStart}
+                className="rounded-lg bg-[var(--survey-btn-bg)] px-6 py-3 text-base font-medium text-[var(--survey-btn-text)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-btn-bg)]"
               >
-                Эхлэх
+                {starting ? "Ачаалж байна…" : "Эхлэх"}
               </button>
             </div>
           )}
@@ -152,22 +215,6 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                 {(survey.minMinutes || survey.maxMinutes) &&
                   `${survey.minMinutes ?? "?"}-${survey.maxMinutes ?? "?"} минут`}
               </p>
-
-              {needsPassCode && (
-                <div className="w-full max-w-xs space-y-2 text-left">
-                  <label htmlFor="passCode" className="text-sm font-medium text-[var(--survey-text)]">
-                    Нэвтрэх код
-                  </label>
-                  <input
-                    id="passCode"
-                    type="text"
-                    value={passCode}
-                    onChange={(e) => setPassCode(e.target.value)}
-                    placeholder="Нэвтрэх кодоо оруулна уу"
-                    className="w-full rounded-lg border border-[var(--survey-option-border)] px-3.5 py-2.5 text-sm text-[var(--survey-text)] outline-none focus-visible:border-[var(--survey-option-border-active)] focus-visible:ring-2 focus-visible:ring-[var(--survey-option-border-active)]/40"
-                  />
-                </div>
-              )}
 
               {/* Reference-ийн checkbox-той адил: readOnly, мөрийг дарахад
                   Зөвшөөрлийн modal нээгдэнэ (Цааш товч дарахад биш). */}

@@ -257,6 +257,17 @@ export interface SurveyThemeCssVars extends CSSProperties {
   "--survey-option-border": string;
   "--survey-option-border-active": string;
   "--survey-option-border-hover": string;
+  // 2026-09-07: PasscodeInput-д зориулж нэмэв. `SurveyThemeColors.inputBg`/
+  // `inputBorder`/... талбарууд аль хэдийн байсан ч (SURVEY_THEME_MAP-ыг үз)
+  // хэдий болтол CSS var болж экспортлогдоогүй байсан (хуучин passCode
+  // <input> нь эдгээрийг ашиглалгүй, ерөнхий --survey-option-border-ыг л
+  // ашигладаг байсан).
+  "--survey-input-bg": string;
+  "--survey-input-border": string;
+  "--survey-input-bg-focus": string;
+  "--survey-input-border-focus": string;
+  "--survey-input-bg-filled": string;
+  "--survey-input-border-filled": string;
   "--survey-radio": string;
   "--survey-radio-active": string;
   "--survey-star-border": string;
@@ -288,6 +299,12 @@ export function surveyThemeCssVars(theme: SurveyThemeColors): SurveyThemeCssVars
     "--survey-option-border": theme.optionBorder,
     "--survey-option-border-active": theme.optionActiveBorder,
     "--survey-option-border-hover": theme.optionBorderHoverColor,
+    "--survey-input-bg": theme.inputBg,
+    "--survey-input-border": theme.inputBorder,
+    "--survey-input-bg-focus": theme.inputBgFocus ?? theme.inputBg,
+    "--survey-input-border-focus": theme.inputBorderFocus ?? theme.inputBorder,
+    "--survey-input-bg-filled": theme.inputBgFilled ?? theme.inputBg,
+    "--survey-input-border-filled": theme.inputBorderFilled ?? theme.inputBorder,
     "--survey-radio": theme.radioColor,
     "--survey-radio-active": theme.radioActiveColor,
     "--survey-star-border": theme.starRateBorder,
