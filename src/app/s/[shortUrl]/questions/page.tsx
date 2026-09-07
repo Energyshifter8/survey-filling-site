@@ -15,25 +15,9 @@ import { useSurveyQuestions } from "@/lib/use-survey";
 
 type LocalAnswer = { optionId?: number };
 
-// Radio/star/тоон товч гэх мэт "ганц дархад л хариулт бүрэн тодорхой болдог"
-// сонголтод суурилсан төрлүүд.
-//   - pageSize === 1 үед (жишээ нь "Сэтгэлийн хат", survey.pageSize=1)
-//     эдгээр дээр auto-advance хэрэглэнэ (2026-09-02, curl-ээр баталгаажсан).
-//   - pageSize > 1 үед (батч горим, 2026-09-04: survey.pageSize confirmed via
-//     Swagger + бодит browser тест — src/lib/api/types.ts-ийг үз) auto-advance
-//     доор (isBatchMode) УНТАРНА, учир нь нэг дэлгэцэд олон асуулт зэрэг
-//     харагддаг тул "дараагийн асуулт руу шилжих" гэдэг ойлголт өөрчлөгддөг.
-//     Гэхдээ энэ багц нь "БҮГД required хариулагдсан эсэх" шалгалтад
-//     (isQuestionAnswered) ямар ч тохиолдолд ХЭВЭЭР ашиглагдана.
-// MULTI_CHOICE/TEXT/MATRIX гэх мэт чөлөөт/олон сонголттой төрлүүд эндээс
-// зориудаар гадуур — UI хараахан хийгдээгүй (доорхыг үз).
 const SELECTABLE_TYPES = new Set<QuestionType>(["SINGLE_CHOICE", "STAR_RATING", "NUMBER_RATING"]);
 const AUTO_ADVANCE_DELAY_MS = 350;
 
-// "Хурдан хариулагч" анхааруулга: сүүлийн N удаагийн "батч/асуулт солигдсон"
-// мөч хамтдаа энэ хугацаанаас бага зайтай өгөгдвол — уншиж бодохгүйгээр
-// дараалан дарж байгааг илтгэнэ. Backend рүү бичигдэхгүй, зөвхөн клиент
-// талын нэг удаагийн зөөлөн nudge (доорх FAST_ANSWER_* тогтмолуудыг үз).
 const FAST_ANSWER_WINDOW = 4;
 const FAST_ANSWER_THRESHOLD_MS = 3000;
 
@@ -92,9 +76,22 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
   const [themeVars, setThemeVars] = useState(() => surveyThemeCssVars(resolveSurveyTheme(undefined)));
   const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, LocalAnswer>>({});
+  const [revealedCount, setRevealedCount] = useState<number>(Number.POSITIVE_INFINITY);
+  const [justRevealedId, setJustRevealedId] = useState<number | null>(null);
+  const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const allQuestions = questions ?? [];
+  const batches = chunkQuestions(allQuestions, pageSize);
+  const totalBatches = batches.length;
+  const currentBatch = batches[currentBatchIndex] ?? [];
+  const batchProgress = totalBatches ? Math.round(((currentBatchIndex + 1) / totalBatches) * 100) : 0;
+  const isLastBatch = currentBatchIndex === totalBatches - 1;
+  const isFirstBatch = currentBatchIndex === 0;
+  const isBatchMode = pageSize > 1;
+  const canProceed = currentBatch.every((q) => isQuestionAnswered(q, answers));
 
   const restoredRef = useRef(false);
   useEffect(() => {
@@ -108,6 +105,9 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     if (progress) {
       setCurrentBatchIndex(progress.currentBatchIndex);
       setAnswers(progress.answers);
+      setRevealedCount(Number.POSITIVE_INFINITY);
+    } else {
+      setRevealedCount(1);
     }
   }, [shortUrl]);
 
@@ -140,6 +140,20 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
       if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     };
   }, [currentBatchIndex]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reads `currentBatch` from this render's closure; `pageSize` covers batch-shape changes.
+  useEffect(() => {
+    if (!Number.isFinite(revealedCount)) return;
+    const frontier = currentBatch[revealedCount - 1];
+    if (frontier && !SELECTABLE_TYPES.has(frontier.questionType)) {
+      setRevealedCount(Number.POSITIVE_INFINITY);
+    }
+  }, [revealedCount, currentBatchIndex, pageSize]);
+
+  useEffect(() => {
+    if (justRevealedId == null) return;
+    questionRefs.current[justRevealedId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [justRevealedId]);
 
   // "Хурдан хариулагч" бурст илрүүлэлт: сүүлийн FAST_ANSWER_WINDOW ширхэг
   // "батч/асуултаас гарсан" timestamp-ыг rolling байдлаар хадгална (re-render
@@ -214,44 +228,37 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     return <StatusScreen>Дуусгаж байна…</StatusScreen>;
   }
 
-  const allQuestions = questions;
-  const batches = chunkQuestions(allQuestions, pageSize);
-  const totalBatches = batches.length;
-  const currentBatch = batches[currentBatchIndex] ?? [];
-  const progress = Math.round(((currentBatchIndex + 1) / totalBatches) * 100);
-  const isLastBatch = currentBatchIndex === totalBatches - 1;
-  const isFirstBatch = currentBatchIndex === 0;
-  // pageSize > 1 үед батч дотор олон асуулт зэрэг харагддаг тул auto-advance
-  // (сонгосны дараа шууд дараагийн асуулт руу шилжих) утга учиргүй болдог —
-  // доорхыг унтраана (SELECTABLE_TYPES-ийн бүлгийн comment-ийг үз).
-  const isBatchMode = pageSize > 1;
-  // "Үргэлжлүүлэх" зөвхөн тухайн батч дахь ХАМГИЙН БАГАДАА хариулах боломжтой
-  // (SELECTABLE_TYPES) бүх асуулт хариулагдсан үед идэвхжинэ.
-  const canProceed = currentBatch.every((q) => isQuestionAnswered(q, answers));
-
-  function handleSelect(question: QuestionWithRule, optionId: number) {
+  function handleSelect(question: QuestionWithRule, optionId: number, indexInBatch: number) {
     setAnswers((prev) => ({ ...prev, [question.id]: { optionId } }));
 
-    // Сонгосон od/тоогоо хэрэглэгчид товчхон харуулаад (highlight), дараа нь
-    // өөрөө дараагийн асуулт руу шилжинэ. Сүүлчийн батч дээр огт auto-submit
-    // хийхгүй — "Дуусгах" товчийг хэрэглэгч өөрөө дарна. Батч горимд (доорх
-    // isBatchMode) энэ auto-advance бүхэлдээ идэвхгүй.
-    const isAutoAdvanceType = !isBatchMode && SELECTABLE_TYPES.has(question.questionType);
-    if (isAutoAdvanceType && !isLastBatch) {
-      if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
+    if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
+    if (!SELECTABLE_TYPES.has(question.questionType)) return;
+
+    if (!isBatchMode) {
+      if (isLastBatch) return;
       autoAdvanceTimeoutRef.current = setTimeout(() => {
         noteQuestionAdvanced();
         setCurrentBatchIndex((c) => c + 1);
       }, AUTO_ADVANCE_DELAY_MS);
+      return;
     }
+
+    const isFrontier = indexInBatch === revealedCount - 1;
+    const hasNextInBatch = indexInBatch < currentBatch.length - 1;
+    if (!isFrontier || !hasNextInBatch) return;
+
+    const nextQuestion = currentBatch[indexInBatch + 1];
+    autoAdvanceTimeoutRef.current = setTimeout(() => {
+      noteQuestionAdvanced();
+      setRevealedCount(indexInBatch + 2);
+      setJustRevealedId(nextQuestion.id);
+    }, AUTO_ADVANCE_DELAY_MS);
   }
 
   function handlePrev() {
     if (isFirstBatch) return;
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
-    // `answers` state өөрчлөгдөхгүй тул өмнөх батч руу буцахад тэр батч дахь
-    // асуултууд өөрсдийн хадгалагдсан хариултаа (сонгогдсон радио/од/тоогоор)
-    // шууд дахин харуулна — нэмэлт ажил шаардлагагүй.
+    setRevealedCount(Number.POSITIVE_INFINITY);
     setCurrentBatchIndex((c) => Math.max(0, c - 1));
   }
 
@@ -260,6 +267,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
     if (!isLastBatch) {
       noteQuestionAdvanced();
+      setRevealedCount(1);
       setCurrentBatchIndex((c) => c + 1);
       return;
     }
@@ -305,20 +313,24 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
             <div className="h-1.5 flex-1 rounded-full bg-[var(--survey-progress-bg)]">
               <div
                 className="h-full rounded-full bg-[var(--survey-progress-active)] transition-[width] duration-200"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${batchProgress}%` }}
               />
             </div>
-            <span className="shrink-0 text-xs font-medium text-[var(--survey-desc)]">{progress}%</span>
+            <span className="shrink-0 text-xs font-medium text-[var(--survey-desc)]">{batchProgress}%</span>
           </div>
         </div>
 
-        {/* Батч дахь БҮХ асуултыг НЭГ дор, дараалсан жагсаалтаар render хийнэ
-            (survey.pageSize-ийн зорилго — src/lib/api/types.ts-ийг үз). */}
         <div className="space-y-10">
-          {currentBatch.map((question, indexInBatch) => {
+          {currentBatch.slice(0, Math.min(revealedCount, currentBatch.length)).map((question, indexInBatch) => {
             const globalIndex = currentBatchIndex * pageSize + indexInBatch;
             return (
-              <div key={question.id} className="space-y-4">
+              <div
+                key={question.id}
+                ref={(el) => {
+                  questionRefs.current[question.id] = el;
+                }}
+                className="animate-in fade-in-0 slide-in-from-bottom-3 space-y-4 duration-300 ease-out"
+              >
                 <h2 className={`font-medium leading-relaxed text-[var(--survey-text)] ${BODY_SIZE_CLASSES[fontLevel]}`}>
                   {globalIndex + 1}. {question.content}
                   {question.required && <span className="ml-1 text-red-500">*</span>}
@@ -343,7 +355,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                             type="radio"
                             name={`question-${question.id}`}
                             checked={selected}
-                            onChange={() => handleSelect(question, option.id)}
+                            onChange={() => handleSelect(question, option.id, indexInBatch)}
                             className="size-4 accent-[var(--survey-radio-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-radio-active)]"
                           />
                           <span>{option.content}</span>
@@ -356,14 +368,14 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                     key={question.id}
                     options={question.options}
                     selectedId={answers[question.id]?.optionId}
-                    onSelect={(optionId) => handleSelect(question, optionId)}
+                    onSelect={(optionId) => handleSelect(question, optionId, indexInBatch)}
                   />
                 ) : question.questionType === "NUMBER_RATING" ? (
                   <NumberRating
                     key={question.id}
                     options={question.options}
                     selectedId={answers[question.id]?.optionId}
-                    onSelect={(optionId) => handleSelect(question, optionId)}
+                    onSelect={(optionId) => handleSelect(question, optionId, indexInBatch)}
                   />
                 ) : (
                   // TODO: MULTI_CHOICE/DROPDOWN/YES_NO/MATRIX/TEXT гэх мэт бусад
