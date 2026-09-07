@@ -8,6 +8,22 @@ import { ApiError } from "@/lib/api/client";
  *    эндээс ирсэн 401/403 дээр л үнэн байж болно. */
 export type ApiCallStage = "public" | "authenticated";
 
+/** Bodit staging дээр баталгаажсан (2026-09-07, GET /public/survey/{id}/questions):
+ *  token хугацаа дууссан алдаа ЗААВАЛ 401 биш ирдэг — 400 BAD_REQUEST,
+ *  code:"validation_error", message:"Шинжилгээ илгээх токены хугацаа дууссан
+ *  байна" хэлбэрээр ч ирж болохыг бодит response нотолсон. Тиймээс зөвхөн
+ *  status-аар (401/403) дүгнэхэд хангалтгүй — body.message-ийг ч шалгана. */
+export function isTokenExpiredError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  if (error.status === 401 || error.status === 403) return true;
+  const body = error.body;
+  if (body && typeof body === "object" && "message" in body) {
+    const message = (body as { message?: unknown }).message;
+    return typeof message === "string" && message.includes("хугацаа дууссан");
+  }
+  return false;
+}
+
 /** Backend-ийн "дуу хоолой" биш, интерфэйсийн энгийн, тодорхой мессеж рүү хөрвүүлнэ.
  *  Уучлалт гуйхгүй — юу болсныг л хэлнэ.
  *

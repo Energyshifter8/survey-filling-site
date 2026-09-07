@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ApiError } from "@/lib/api/client";
 import {
   checkPass,
   getSurveyQuestions,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/api/survey";
 import type { AnswerChoice, QuestionWithRule, SurveyResponseSubmission } from "@/lib/api/types";
 import { getBrowserInfo } from "@/lib/device-info";
+import { isTokenExpiredError } from "@/lib/error-messages";
 import {
   clearSurveyProgress,
   clearSurveySession,
@@ -130,9 +130,11 @@ export function useSurveyQuestions(shortUrl: string) {
         setQuestions(ordered);
       } catch (err) {
         if (fetchedForRef.current === shortUrl) {
-          if (err instanceof ApiError && err.status === 401) {
-            // Token хугацаа дууссан — хуучирсан session/progress-ийг цэвэрлээд
-            // эхнээс (intro) эхлүүлнэ (page component "SESSION_EXPIRED"-г барьж redirect хийнэ).
+          if (isTokenExpiredError(err)) {
+            // Token хугацаа дууссан — 401-ээр ЗААВАЛ ирдэггүй (400 +
+            // "хугацаа дууссан" message-ээр ч ирдэг, isTokenExpiredError-ийг
+            // үз) — хуучирсан session/progress-ийг цэвэрлээд эхнээс (intro)
+            // эхлүүлнэ (page component "SESSION_EXPIRED"-г барьж redirect хийнэ).
             clearSurveySession(shortUrl);
             clearSurveyProgress(shortUrl);
             setError(new Error("SESSION_EXPIRED"));
@@ -151,6 +153,7 @@ export function useSurveyQuestions(shortUrl: string) {
       number,
       {
         optionId?: number;
+        optionIds?: number[];
         questionType: QuestionWithRule["questionType"];
         section?: QuestionWithRule["section"];
         startedAt: number;
@@ -163,17 +166,28 @@ export function useSurveyQuestions(shortUrl: string) {
     const templateQuestionAnswers: AnswerChoice[] = [];
     const customQuestionAnswers: AnswerChoice[] = [];
     for (const [questionId, answer] of Object.entries(answers)) {
-      const choice: AnswerChoice = {
-        questionId: Number(questionId),
-        optionId: answer.optionId,
-        questionType: answer.questionType,
-        duration: Math.round((Date.now() - answer.startedAt) / 1000),
-      };
-      if (answer.section === "PRIMARY_QUESTION" || !answer.section) {
-        templateQuestionAnswers.push(choice);
-      } else {
-        customQuestionAnswers.push(choice);
-      }
+      const duration = Math.round((Date.now() - answer.startedAt) / 1000);
+      // MULTI_CHOICE — decompiled bundle-ээр баталгаажсан (2026-09-07): нэг
+      // AnswerChoice дотор массив биш, сонгосон OPTION БҮРТ тусдаа AnswerChoice
+      // (ижил questionId-тай) илгээдэг.
+      const choices: AnswerChoice[] = answer.optionIds
+        ? answer.optionIds.map((optionId) => ({
+            questionId: Number(questionId),
+            optionId,
+            questionType: answer.questionType,
+            duration,
+          }))
+        : [
+            {
+              questionId: Number(questionId),
+              optionId: answer.optionId,
+              questionType: answer.questionType,
+              duration,
+            },
+          ];
+      const bucket =
+        answer.section === "PRIMARY_QUESTION" || !answer.section ? templateQuestionAnswers : customQuestionAnswers;
+      bucket.push(...choices);
     }
 
     const meta = loadSurveyMeta(shortUrl);

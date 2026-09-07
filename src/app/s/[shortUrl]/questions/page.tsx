@@ -6,14 +6,21 @@ import { use, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { BODY_SIZE_CLASSES, META_SIZE_CLASSES } from "@/components/FontSizeToggle";
 import type { QuestionOptionDTO, QuestionType, QuestionWithRule } from "@/lib/api/types";
-import { getFriendlyErrorMessage } from "@/lib/error-messages";
+import { getFriendlyErrorMessage, isTokenExpiredError } from "@/lib/error-messages";
 import { useFontSize } from "@/lib/font-size-context";
-import { loadSurveyMeta, loadSurveyProgress, saveSurveyProgress } from "@/lib/survey-session";
+import { HELP_TEXT } from "@/lib/helptext";
+import {
+  clearSurveyProgress,
+  clearSurveySession,
+  loadSurveyMeta,
+  loadSurveyProgress,
+  saveSurveyProgress,
+} from "@/lib/survey-session";
 import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
 import { trackEvent } from "@/lib/telemetry";
 import { useSurveyQuestions } from "@/lib/use-survey";
 
-type LocalAnswer = { optionId?: number };
+type LocalAnswer = { optionId?: number; optionIds?: number[] };
 
 const SELECTABLE_TYPES = new Set<QuestionType>(["SINGLE_CHOICE", "STAR_RATING", "NUMBER_RATING"]);
 const AUTO_ADVANCE_DELAY_MS = 350;
@@ -38,10 +45,18 @@ function chunkQuestions(questions: QuestionWithRule[], pageSize: number): Questi
   return batches;
 }
 
-// UI хараахан хийгдээгүй төрлийн (MULTI_CHOICE, TEXT, ...) асуултыг блокдохгүй
+// UI хараахан хийгдээгүй төрлийн (TEXT, MATRIX, ...) асуултыг блокдохгүй
 // өнгөрөөнө — сонголт хийх боломж огт байхгүй үед "Үргэлжлүүлэх"-ийг мөнхөд
 // хаачихаас сэргийлнэ (өмнөх ганц-асуултын canProceed-тэй ижил зарчим).
 function isQuestionAnswered(question: QuestionWithRule, answers: Record<number, LocalAnswer>): boolean {
+  if (question.questionType === "MULTI_CHOICE") {
+    // decompiled bundle-ээр баталгаажсан (2026-09-07): min/max тодорхойгүй бол
+    // 1/9999 гэж үзнэ.
+    const count = answers[question.id]?.optionIds?.length ?? 0;
+    const min = question.minAnswerCount ?? 1;
+    const max = question.maxAnswerCount ?? 9999;
+    return count >= min && count <= max;
+  }
   if (!SELECTABLE_TYPES.has(question.questionType)) return true;
   return answers[question.id]?.optionId !== undefined;
 }
@@ -238,6 +253,24 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     }, AUTO_ADVANCE_DELAY_MS);
   }
 
+  // decompiled bundle-ээр баталгаажсан (2026-09-07): дээд тооноос давахад
+  // сонголт хориглогддоггүй, хамгийн эртнийхийг нь (FIFO) автоматаар арилгаад
+  // шинийг нь нэмдэг. Auto-scroll/advance энд огт хэрэглэхгүй (мөн бодит
+  // reference-ийн өөрийн scroll dispatcher нь MULTI_CHOICE-ыг ялангуяа
+  // үл хамаарна гэж шууд бичсэн байгаа).
+  function handleMultiToggle(question: QuestionWithRule, optionId: number) {
+    setAnswers((prev) => {
+      const current = prev[question.id]?.optionIds ?? [];
+      const max = question.maxAnswerCount ?? 9999;
+      const next = current.includes(optionId)
+        ? current.filter((id) => id !== optionId)
+        : current.length >= max
+          ? [...current.slice(1), optionId]
+          : [...current, optionId];
+      return { ...prev, [question.id]: { ...prev[question.id], optionIds: next } };
+    });
+  }
+
   function handlePrev() {
     if (isFirstBatch) return;
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
@@ -261,6 +294,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
           q.id,
           {
             optionId: answers[q.id]?.optionId,
+            optionIds: answers[q.id]?.optionIds,
             questionType: q.questionType,
             section: q.section,
             startedAt: questionStartedAt.current,
@@ -277,7 +311,16 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
       // орохоос сэргийлнэ (reference push ашигладаг ч энд зориудаар өөр).
       router.replace(`/s/${shortUrl}/end`);
     } catch (err) {
-      // submitSurveyResponse — Bearer token-той дуудлага.
+      // submitSurveyResponse — Bearer token-той дуудлага. Token хугацаа
+      // дууссан бол (401 эсвэл 400+"хугацаа дууссан" message — isTokenExpiredError-ийг
+      // үз) дахин оролдоход л ижил алдаа давтагдах тул шууд intro руу буцаана.
+      if (isTokenExpiredError(err)) {
+        clearSurveySession(shortUrl);
+        clearSurveyProgress(shortUrl);
+        toast.error("Судалгаанд орох хугацаа дууссан байна. Эхлэл рүү шилжиж байна…");
+        router.replace(`/s/${shortUrl}`);
+        return;
+      }
       setSubmitError(getFriendlyErrorMessage(err, "authenticated"));
       setSubmitting(false);
     }
@@ -324,7 +367,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                       return (
                         <label
                           key={option.id}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3.5 transition-colors ${
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-2 transition-colors ${
                             BODY_SIZE_CLASSES[fontLevel]
                           } ${
                             selected
@@ -339,6 +382,41 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                             onChange={() => handleSelect(question, option.id, indexInBatch)}
                             className="size-4 accent-[var(--survey-radio-active)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-radio-active)]"
                           />
+                          <span>{option.content}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : question.questionType === "MULTI_CHOICE" ? (
+                  <div className="space-y-2.5">
+                    {question.minAnswerCount != null &&
+                      question.maxAnswerCount != null &&
+                      question.minAnswerCount !== question.maxAnswerCount && (
+                        <p className={`text-[var(--survey-desc)] ${META_SIZE_CLASSES[fontLevel]}`}>
+                          {HELP_TEXT.multiChoiceHintPrefix} {question.minAnswerCount} {HELP_TEXT.multiChoiceHintMid}{" "}
+                          {question.maxAnswerCount} {HELP_TEXT.multiChoiceHintSuffix}
+                        </p>
+                      )}
+                    {sortByOrder(question.options).map((option) => {
+                      const selected = (answers[question.id]?.optionIds ?? []).includes(option.id);
+                      return (
+                        <label
+                          key={option.id}
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-2 transition-colors ${
+                            BODY_SIZE_CLASSES[fontLevel]
+                          } ${
+                            selected
+                              ? "border-[var(--survey-option-border-active)] bg-[var(--survey-option-bg-active)] text-[var(--survey-option-text-active)]"
+                              : "border-[var(--survey-option-border)] bg-[var(--survey-option-bg)] text-[var(--survey-option-text)]"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => handleMultiToggle(question, option.id)}
+                            className="sr-only"
+                          />
+                          <CheckboxIcon checked={selected} />
                           <span>{option.content}</span>
                         </label>
                       );
@@ -359,10 +437,8 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                     onSelect={(optionId) => handleSelect(question, optionId, indexInBatch)}
                   />
                 ) : (
-                  // TODO: MULTI_CHOICE/DROPDOWN/YES_NO/MATRIX/TEXT гэх мэт бусад
-                  // асуултын төрлийн UI хараахан хийгдээгүй (энэ судалгаанд
-                  // гараагүй, deliverable зөвхөн SINGLE_CHOICE/STAR_RATING/
-                  // NUMBER_RATING шаардсан).
+                  // TODO: DROPDOWN/YES_NO/MATRIX/TEXT гэх мэт бусад асуултын
+                  // төрлийн UI хараахан хийгдээгүй.
                   <p className="text-sm italic text-[var(--survey-desc)]">
                     Энэ төрлийн асуултын ({question.questionType}) UI удахгүй нэмэгдэнэ.
                   </p>
@@ -394,6 +470,51 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
         </div>
       </div>
     </main>
+  );
+}
+
+/** MULTI_CHOICE-ийн checkbox дүрс: сонгоогүй үед хоосон дугуйруулсан дөрвөлжин
+ *  outline (`--survey-radio`), сонгосон үед `--survey-radio-active`-аар дүүрсэн
+ *  дөрвөлжин доторх цагаан checkmark. Reference-ийн (decompiled bundle) нэг
+ *  path-тай SVG-ийн оронд энд 2 дүрсийг ил тод давхарлав — харагдах үр дүн
+ *  ижилхэн, гэхдээ энэ хувилбар илүү ойлгомжтой/засварлахад хялбар. */
+function CheckboxIcon({ checked }: { checked: boolean }) {
+  if (!checked) {
+    return (
+      <svg
+        aria-hidden="true"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="size-6 shrink-0 text-[var(--survey-radio)]"
+      >
+        <path
+          d="M18 19H6C5.45 19 5 18.55 5 18V6C5 5.45 5.45 5 6 5H18C18.55 5 19 5.45 19 6V18C19 18.55 18.55 19 18 19ZM19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3Z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      aria-hidden="true"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="size-6 shrink-0 text-[var(--survey-radio-active)]"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="4" fill="currentColor" />
+      <path
+        d="M7.5 12.5l3 3 6-6.5"
+        stroke="white"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
   );
 }
 

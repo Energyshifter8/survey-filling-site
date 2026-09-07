@@ -73,6 +73,10 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   const startPage = survey.pages?.START?.[0];
   const displayTitle = startPage?.title ?? HELP_TEXT.titleFallback;
   const displayDescription = startPage?.content;
+  // confirmed 2026-09-07: reference (decompiled bundle) intro товч
+  // survey.pages.START[0].btnLabel-ээс dynamic ирдэг (жишээ: "Оролцох"),
+  // "Эхлэх" бол зөвхөн btnLabel байхгүй үеийн fallback.
+  const startButtonLabel = startPage?.btnLabel || HELP_TEXT.startButton;
   const themeVars = surveyThemeCssVars(resolveSurveyTheme(survey.design));
 
   if (taken) {
@@ -179,7 +183,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                 onClick={handleIntroStart}
                 className="rounded-lg bg-[var(--survey-btn-bg)] px-6 py-3 text-base font-medium text-[var(--survey-btn-text)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-btn-bg)]"
               >
-                {starting ? HELP_TEXT.startingButton : HELP_TEXT.startButton}
+                {starting ? HELP_TEXT.startingButton : startButtonLabel}
               </button>
             </div>
           )}

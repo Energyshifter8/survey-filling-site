@@ -13,4 +13,7 @@ export const HELP_TEXT = {
   minutesRangeSeparator: "-",
   minutesSuffix: "минут",
   unknownRangeValue: "?",
+  multiChoiceHintPrefix: "Доод тал нь",
+  multiChoiceHintMid: "хариулт, дээд тал нь",
+  multiChoiceHintSuffix: "хариулт сонгоно уу.",
 };
