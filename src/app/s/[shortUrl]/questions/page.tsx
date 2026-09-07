@@ -142,6 +142,15 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     questionStartedAt.current = Date.now();
   }, [currentBatchIndex]);
 
+  // Батч солигдоход (Үргэлжлүүлэх/Буцах хоёуланд адил) хуудсыг ЗААВАЛ эхэнд
+  // нь тавина — эс тэгвэл өмнөх батчийн сүүлийн асуулт дээр байсан scroll
+  // байрлал хэвээр үлдэж, шинэ батчийн сүүлийн асуулт дээр байгаа мэт
+  // харагддаг байсан. Энэ бол шинэ context тул animation хэрэггүй, шууд.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `currentBatchIndex` intentionally resets scroll on every batch change.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [currentBatchIndex]);
+
   // Auto-advance-ийн pending timer — батч солигдох бүрд (Буцах/Үргэлжлүүлэх/
   // auto-advance өөрөө) хуучин timer-ийг цуцалж, давхар шилжихээс сэргийлнэ.
   const autoAdvanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
