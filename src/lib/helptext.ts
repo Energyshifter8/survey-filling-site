@@ -1,0 +1,16 @@
+export const HELP_TEXT = {
+  loading: "Судалгааг ачааллаж байна…",
+  alreadyTakenSuffix: "Та энэ судалгааг өмнө нь бөглөсөн байна. Баярлалаа!",
+  unavailableFallback: "Энэ судалгаа одоогоор оролцох боломжгүй байна.",
+  titleFallback: "Судалгаанд оролцох",
+  creatorLabel: "Судалгаа нийтлэгч: ",
+  startButton: "Эхлэх",
+  continueButton: "Цааш",
+  startingButton: "Ачаалж байна…",
+  consentCheckboxLabel: "Зөвшөөрлийн хуудастай танилцсан болно.",
+  passcodeLegend: "Нэвтрэх код",
+  questionsCountSuffix: "асуулт",
+  minutesRangeSeparator: "-",
+  minutesSuffix: "минут",
+  unknownRangeValue: "?",
+};

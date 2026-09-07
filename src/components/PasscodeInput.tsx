@@ -2,6 +2,7 @@
 
 import { type ChangeEvent, type ClipboardEvent, type KeyboardEvent, useRef } from "react";
 import { useFontSize } from "@/lib/font-size-context";
+import { HELP_TEXT } from "@/lib/helptext";
 
 export interface PasscodeInputProps {
   value: string;
@@ -101,7 +102,7 @@ export default function PasscodeInput({
     <div className="flex flex-col items-center gap-4">
       <LockIcon className="text-[var(--survey-text)]" />
       <fieldset aria-describedby={error ? errorId : undefined} className="m-0 contents border-0 p-0">
-        <legend className="sr-only">Нэвтрэх код</legend>
+        <legend className="sr-only">{HELP_TEXT.passcodeLegend}</legend>
         <div className="flex justify-center gap-2">
           {cells.map((char, i) => (
             <input

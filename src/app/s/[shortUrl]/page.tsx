@@ -10,6 +10,7 @@ import PasscodeInput from "@/components/PasscodeInput";
 import { getFriendlyErrorMessage } from "@/lib/error-messages";
 import { useFontSize } from "@/lib/font-size-context";
 import { manrope } from "@/lib/fonts";
+import { HELP_TEXT } from "@/lib/helptext";
 import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
 import { trackEvent } from "@/lib/telemetry";
 import { startSurveySession, useSurveyMeta } from "@/lib/use-survey";
@@ -55,7 +56,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   const { level: fontLevel } = useFontSize();
 
   if (loading) {
-    return <StatusScreen manrope={manrope.className}>Судалгааг ачааллаж байна…</StatusScreen>;
+    return <StatusScreen manrope={manrope.className}>{HELP_TEXT.loading}</StatusScreen>;
   }
 
   if (error) {
@@ -70,7 +71,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   // гэдгээр ирдэггүй (тийм талбар байхгүй) — жинхэнэ эх сурвалж нь
   // survey.pages.START[0] (2026-09-02, curl-ээр баталгаажсан — src/lib/api/types.ts-ийг үз).
   const startPage = survey.pages?.START?.[0];
-  const displayTitle = startPage?.title ?? "Судалгаанд оролцох";
+  const displayTitle = startPage?.title ?? HELP_TEXT.titleFallback;
   const displayDescription = startPage?.content;
   const themeVars = surveyThemeCssVars(resolveSurveyTheme(survey.design));
 
@@ -78,7 +79,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
     return (
       <StatusScreen manrope={manrope.className} style={themeVars}>
         {displayTitle ? `${displayTitle} — ` : ""}
-        Та энэ судалгааг өмнө нь бөглөсөн байна. Баярлалаа!
+        {HELP_TEXT.alreadyTakenSuffix}
       </StatusScreen>
     );
   }
@@ -86,7 +87,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
   if (survey.expired || survey.canParticipate === false) {
     return (
       <StatusScreen manrope={manrope.className} style={themeVars}>
-        {survey.message ?? "Энэ судалгаа одоогоор оролцох боломжгүй байна."}
+        {survey.message ?? HELP_TEXT.unavailableFallback}
       </StatusScreen>
     );
   }
@@ -151,7 +152,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
               )}
               {survey.creator && (
                 <p className={META_SIZE_CLASSES[fontLevel]}>
-                  <span className="text-[var(--survey-text)]">Судалгаа нийтлэгч: </span>
+                  <span className="text-[var(--survey-text)]">{HELP_TEXT.creatorLabel}</span>
                   <span className="font-medium italic text-[var(--survey-text)]">{survey.creator}</span>
                 </p>
               )}
@@ -178,7 +179,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                 onClick={handleIntroStart}
                 className="rounded-lg bg-[var(--survey-btn-bg)] px-6 py-3 text-base font-medium text-[var(--survey-btn-text)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-btn-bg)]"
               >
-                {starting ? "Ачаалж байна…" : "Эхлэх"}
+                {starting ? HELP_TEXT.startingButton : HELP_TEXT.startButton}
               </button>
             </div>
           )}
@@ -191,10 +192,10 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                 {displayTitle}
               </h1>
               <p className={`text-[var(--survey-text)] ${META_SIZE_CLASSES[fontLevel]}`}>
-                {survey.questionCount != null && `${survey.questionCount} асуулт`}
+                {survey.questionCount != null && `${survey.questionCount} ${HELP_TEXT.questionsCountSuffix}`}
                 {survey.questionCount != null && (survey.minMinutes || survey.maxMinutes) && " | "}
                 {(survey.minMinutes || survey.maxMinutes) &&
-                  `${survey.minMinutes ?? "?"}-${survey.maxMinutes ?? "?"} минут`}
+                  `${survey.minMinutes ?? HELP_TEXT.unknownRangeValue}${HELP_TEXT.minutesRangeSeparator}${survey.maxMinutes ?? HELP_TEXT.unknownRangeValue} ${HELP_TEXT.minutesSuffix}`}
               </p>
 
               {/* Reference-ийн checkbox-той адил: readOnly, мөрийг дарахад
@@ -223,7 +224,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                   </svg>
                 </span>
                 <span className={`${META_SIZE_CLASSES[fontLevel]} text-[#10182B]`}>
-                  Зөвшөөрлийн хуудастай танилцсан болно.
+                  {HELP_TEXT.consentCheckboxLabel}
                 </span>
               </button>
 
@@ -235,7 +236,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                 onClick={handleContinue}
                 className="rounded-lg bg-[var(--survey-btn-bg)] px-6 py-3 text-base font-medium text-[var(--survey-btn-text)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-btn-bg)]"
               >
-                {starting ? "Ачаалж байна…" : "Цааш"}
+                {starting ? HELP_TEXT.startingButton : HELP_TEXT.continueButton}
               </button>
             </div>
           )}
