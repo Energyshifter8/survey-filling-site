@@ -93,12 +93,6 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 
   const needsPassCode = Boolean(survey.passCodeProtected);
   const passCodeComplete = passCode.trim().length === 6;
-  // ЗАСВАР (2026-09-07): Нэвтрэх кодны шалгалт (check-pass дуудлага) INTRO
-  // алхмын "Эхлэх" товч руу шилжив (доорх handleIntroStart) — reference
-  // (survey-staging.mindxplus.com)-ийн decompiled bundle-ээр баталгаажсанаар
-  // тэд яг үүнийг хийдэг: 6 нүд бөглөгдмөгц шууд check-pass дуудаж, амжилттай
-  // бол дараагийн алхам руу шилждэг ("Цааш" хүртэл хүлээдэггүй). Иймд энд
-  // canContinue-д passCode-ийн шаардлага дахин орохгүй.
   const canContinue = consented && !starting;
 
   async function handleIntroStart() {
@@ -106,7 +100,7 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
       setStep("consent");
       return;
     }
-    if (!passCodeComplete) return; // товч disabled тул энд хүрэхгүй ёстой, зөвхөн хамгаалалт
+    if (!passCodeComplete) return;
     setStarting(true);
     setStartError(null);
     setPassCodeError(false);
@@ -114,10 +108,6 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
       await startSurveySession(shortUrl, surveyId, passCode.trim());
       setStep("consent");
     } catch (err) {
-      // decompiled bundle-ээр баталгаажсан (2026-09-07): буруу код үед
-      // reference улаан хүрээ + toast мессеж ("Судалгаанд оролцох нууц код
-      // буруу байна") харуулдаг, бичсэн орооо цэвэрлэдэггүй (зөвхөн дараагийн
-      // бичилт дээр л алдааны төлөв цэвэрлэгддэг).
       setPassCodeError(true);
       const message = getFriendlyErrorMessage(err, "public");
       setStartError(message);
@@ -171,9 +161,6 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
                   value={passCode}
                   onChange={(next) => {
                     setPassCode(next);
-                    // Улаан хүрээ (aria-invalid) ба алдааны текст хоёр ЗЭРЭГ
-                    // цэвэрлэгдэх ёстой — эсрэгээр бол хүрээ арилаад доорх
-                    // мессеж хуучин алдаагаа харуулсаар үлдэх зөрчил гарна.
                     setPassCodeError(false);
                     setStartError(null);
                   }}
@@ -185,12 +172,6 @@ export default function SurveyLandingPage({ params }: { params: Promise<{ shortU
 
               {startError && <p className="text-sm text-red-600">{startError}</p>}
 
-              {/* ЗОРИУДСАН ЯЛГАА (2026-09-07): decompiled bundle-ээр баталгаажсанаар
-                  reference энэ товчийг 6 нүд бөглөгдөх хүртэл render Ч хийдэггүй
-                  (disabled биш — DOM-д огт байхгүй). Бид үргэлж харагдахаар,
-                  зөвхөн disabled болгож үлдээв — дээрх файлын толгой хэсгийн
-                  a11y-ийн шалтгаантай ижил зарчим (хэрэглэгчид "яагаад
-                  үргэлжлүүлж чадахгүй байна" гэдгийг харуулна). */}
               <button
                 type="button"
                 disabled={(needsPassCode && !passCodeComplete) || starting}

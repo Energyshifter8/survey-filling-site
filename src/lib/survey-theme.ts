@@ -257,11 +257,6 @@ export interface SurveyThemeCssVars extends CSSProperties {
   "--survey-option-border": string;
   "--survey-option-border-active": string;
   "--survey-option-border-hover": string;
-  // 2026-09-07: PasscodeInput-д зориулж нэмэв. `SurveyThemeColors.inputBg`/
-  // `inputBorder`/... талбарууд аль хэдийн байсан ч (SURVEY_THEME_MAP-ыг үз)
-  // хэдий болтол CSS var болж экспортлогдоогүй байсан (хуучин passCode
-  // <input> нь эдгээрийг ашиглалгүй, ерөнхий --survey-option-border-ыг л
-  // ашигладаг байсан).
   "--survey-input-bg": string;
   "--survey-input-border": string;
   "--survey-input-bg-focus": string;

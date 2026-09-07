@@ -3,38 +3,6 @@
 import { type ChangeEvent, type ClipboardEvent, type KeyboardEvent, useRef } from "react";
 import { useFontSize } from "@/lib/font-size-context";
 
-// Reference (survey-staging.mindxplus.com) "Нэвтрэх код" PIN input-ыг
-// decompiled bundle-аар баталгаажуулж хуулбарласан (2026-09-07,
-// `_next/static/chunks/app/s/%5Bid%5D/page-6ca1716ac1ae430b.js`, module
-// 24448 — AntD Input эргэн тойрон):
-//   - 6 тусдаа <input type="password" maxLength={1}> нүд. Native browser
-//     masking ашигладаг — "1 секунд харагдаад дараа нь dot болох" гэсэн ямар
-//     ч timeout/reveal trick тэнд БАЙХГҮЙ, зөвхөн type="password"-ийн
-//     стандарт (шууд) зан төлөв.
-//   - onChange: зөвхөн 1 digit (эсвэл хоосон, backspace-ийн үед) зөвшөөрнө
-//     (`/^\d?$/`), бичихэд дараагийн нүд рүү автоматаар шилждэг.
-//   - Backspace: нүд аль хэдийн хоосон үед л өмнөх рүү буцаж focus хийнэ
-//     (тухайн өмнөх нүдийг ӨӨРӨӨ цэвэрлэдэггүй — зөвхөн focus шилждэг;
-//     утгатай нүд дээр backspace дарахад native onChange нь аль хэдийн уг
-//     нүдийг цэвэрлэчихсэн байдаг тул дахин цэвэрлэх шаардлагагүй).
-//   - Paste: зөвхөн тоон тэмдэгтийг шүүгээд (`\D` арилгаад) урт нь 6-с багаа
-//     бол юу ч хийхгүй (үл тоомсорлоно); 6+ бол эхний 6-г бүх нүдэнд тараагаад
-//     сүүлчийн нүд рүү focus хийнэ.
-//   - Enter: бүх нүд бөглөгдсөн үед `onSubmit`-ыг дуудна (reference-д "Эхлэх"
-//     товч дарахтай яг ижил үйлдэл өдддөг).
-//
-// Reference-ээс ЗОРИУДСАН 2 ялгаа (bug эсвэл зохисгүй утга байсныг олж,
-// сайжруулсан — санамсаргүй зөрүү биш):
-//   - Reference-ийн decompiled эх кодод улаан хүрээ (`border`) ба AntD-ийн
-//     `status="error"` ХОЁР тусдаа flag-аар удирддаг байсан бөгөөд зөвхөн
-//     сүүлийнх нь дараагийн бичилт дээр цэвэрлэгддэг, харин улаан хүрээ
-//     ХЭЗЭЭ Ч цэвэрлэгддэггүй нь бодит production bug шиг харагдсан (устгах
-//     дуудлага хаана ч алга). Бид үүнийг ганц `error` prop-оор нэгтгэж,
-//     дараагийн ямар ч бичилт дээр (parent талын onChange handler-аар)
-//     цэвэрлэгддэг болгосон.
-//   - `autoComplete="one-time-code"` ашигласан (reference "newpassword" гэсэн
-//     энэ зорилгод тохирохгүй утга ашигласан байсан) — гар утасны SMS/OTP
-//     autofill-тэй илүү зөв нийцнэ, харагдах байдал/зан төлөвт нөлөөгүй.
 export interface PasscodeInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -48,9 +16,6 @@ export interface PasscodeInputProps {
 const CELL_FONT_SIZE: Record<0 | 1 | 2, number> = { 0: 28, 1: 34, 2: 40 };
 
 function LockIcon({ className }: { className?: string }) {
-  // Reference-ийн яг тэр SVG (decompiled bundle-ийн inline component `g`-ээс
-  // шууд хуулсан path өгөгдөл) — lucide-ийн ойролцоо Lock icon биш, чиг үнэндээ
-  // ижил зураг.
   return (
     <svg
       width="32"
@@ -127,7 +92,7 @@ export default function PasscodeInput({
   function handlePaste(e: ClipboardEvent<HTMLInputElement>) {
     e.preventDefault();
     const digits = e.clipboardData.getData("text/plain").replace(/\D/g, "");
-    if (digits.length < length) return; // reference: 6-с богино paste-ийг үл тоомсорлоно
+    if (digits.length < length) return;
     onChange(digits.slice(0, length));
     inputsRef.current[length - 1]?.focus();
   }
