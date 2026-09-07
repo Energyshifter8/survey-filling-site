@@ -303,6 +303,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
 
         <div className="space-y-10">
           {currentBatch.map((question, indexInBatch) => {
+            const globalIndex = currentBatchIndex * pageSize + indexInBatch;
             return (
               <div
                 key={question.id}
@@ -312,7 +313,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                 className="space-y-4"
               >
                 <h2 className={`font-medium leading-relaxed text-[var(--survey-text)] ${BODY_SIZE_CLASSES[fontLevel]}`}>
-                  {indexInBatch + 1}. {question.content}
+                  {globalIndex + 1}. {question.content}
                   {question.required && <span className="ml-1 text-red-500">*</span>}
                 </h2>
 
