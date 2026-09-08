@@ -92,7 +92,10 @@ export function clearSurveySession(shortUrl: string) {
 // index, асуултын index БИШ) болгож нэрийг өөрчилсөн.
 export interface SurveyProgress {
   currentBatchIndex: number;
-  answers: Record<number, { optionId?: number }>;
+  // optionId — SINGLE_CHOICE/STAR_RATING/NUMBER_RATING/YES_NO/DROPDOWN.
+  // optionIds — MULTI_CHOICE. text — TEXT/TEXT_INPUT/NUMBER_INPUT/LONG_TEXT
+  // (questions/page.tsx-ийн LocalAnswer-тай ижил бүтэц).
+  answers: Record<number, { optionId?: number; optionIds?: number[]; text?: string }>;
 }
 
 function progressKey(shortUrl: string) {

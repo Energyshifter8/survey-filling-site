@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { BODY_SIZE_CLASSES, META_SIZE_CLASSES } from "@/components/FontSizeToggle";
 import type { QuestionOptionDTO, QuestionType, QuestionWithRule } from "@/lib/api/types";
 import { getFriendlyErrorMessage, isTokenExpiredError } from "@/lib/error-messages";
-import { useFontSize } from "@/lib/font-size-context";
+import { type FontSizeLevel, useFontSize } from "@/lib/font-size-context";
 import { HELP_TEXT } from "@/lib/helptext";
 import {
   clearSurveyProgress,
@@ -20,10 +20,38 @@ import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
 import { trackEvent } from "@/lib/telemetry";
 import { useSurveyQuestions } from "@/lib/use-survey";
 
-type LocalAnswer = { optionId?: number; optionIds?: number[] };
+type LocalAnswer = { optionId?: number; optionIds?: number[]; text?: string };
 
-const SELECTABLE_TYPES = new Set<QuestionType>(["SINGLE_CHOICE", "STAR_RATING", "NUMBER_RATING"]);
+// YES_NO/DROPDOWN — нэг action (товч дарах/сонголт хийх)-аар дуусдаг тул
+// SINGLE_CHOICE/STAR_RATING/NUMBER_RATING-тай ижил auto-advance/canProceed
+// зарчмыг хуваалцана (доорх handleSelect-ийг үз). TEXT/TEXT_INPUT/
+// NUMBER_INPUT/LONG_TEXT энд ОРООГҮЙ — хэрэглэгч бичиж дуусахыг мэдэх
+// арга байхгүй тул тэдгээрт auto-advance хэрэглэхгүй (доорх TEXT_TYPES-ийг үз).
+const SELECTABLE_TYPES = new Set<QuestionType>(["SINGLE_CHOICE", "STAR_RATING", "NUMBER_RATING", "YES_NO", "DROPDOWN"]);
+// Богино нэг мөрийн чөлөөт бичвэр хариулт (жишээ: нас — NUMBER_INPUT,
+// амьдардаг улс — TEXT/TEXT_INPUT). LONG_TEXT (олон мөрийн textarea)-ыг
+// тусад нь (доор) авч үзнэ, учир нь UI/character-counter өөр.
+const TEXT_TYPES = new Set<QuestionType>(["TEXT", "TEXT_INPUT", "NUMBER_INPUT"]);
+// AnswerChoice.content-ийн Swagger-ээр баталгаажсан max length (types.ts-ийг
+// үз) — тухайн асуулт бүрийн dynamic max length талбар Swagger schema-д
+// байхгүй тул (QuestionWithRule дээр ийм талбар алга) энэ submission-level
+// 500-ийг л fallback болгож ашиглав.
+const TEXTAREA_DEFAULT_MAX_LENGTH = 500;
 const AUTO_ADVANCE_DELAY_MS = 350;
+
+// YES_NO — Swagger-ээр батлагдсан тусдаа questionType (types.ts-ийг үз).
+// Гэхдээ зарим судалгаа "Тийм"/"Үгүй" гэсэн 2 сонголттой асуултыг ЭНГИЙН
+// SINGLE_CHOICE-ээр илгээж болзошгүй тул (тусдаа enum ашиглаагүй сан) —
+// options.length === 2 && label яг "Тийм"/"Үгүй" үед л 2-товчийн YES_NO
+// layout руу fallback хийнэ, бусад SINGLE_CHOICE энгийн радио хэвээр.
+const YES_NO_LABELS = new Set(["тийм", "үгүй"]);
+function isYesNoQuestion(question: QuestionWithRule): boolean {
+  if (question.questionType === "YES_NO") return true;
+  if (question.questionType !== "SINGLE_CHOICE") return false;
+  const options = question.options ?? [];
+  if (options.length !== 2) return false;
+  return options.every((option) => YES_NO_LABELS.has(option.content.trim().toLowerCase()));
+}
 
 const FAST_ANSWER_WINDOW = 4;
 const FAST_ANSWER_THRESHOLD_MS = 3000;
@@ -56,6 +84,10 @@ function isQuestionAnswered(question: QuestionWithRule, answers: Record<number, 
     const min = question.minAnswerCount ?? 1;
     const max = question.maxAnswerCount ?? 9999;
     return count >= min && count <= max;
+  }
+  if (TEXT_TYPES.has(question.questionType) || question.questionType === "LONG_TEXT") {
+    if (!question.required) return true;
+    return (answers[question.id]?.text ?? "").trim().length > 0;
   }
   if (!SELECTABLE_TYPES.has(question.questionType)) return true;
   return answers[question.id]?.optionId !== undefined;
@@ -280,6 +312,12 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
     });
   }
 
+  // TEXT/TEXT_INPUT/NUMBER_INPUT/LONG_TEXT — auto-advance/auto-scroll ОГТ
+  // хэрэглэхгүй (дээрх TEXT_TYPES-ийн comment-ийг үз), зөвхөн утгыг хадгална.
+  function handleTextChange(question: QuestionWithRule, text: string) {
+    setAnswers((prev) => ({ ...prev, [question.id]: { ...prev[question.id], text } }));
+  }
+
   function handlePrev() {
     if (isFirstBatch) return;
     if (autoAdvanceTimeoutRef.current) clearTimeout(autoAdvanceTimeoutRef.current);
@@ -304,6 +342,7 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
           {
             optionId: answers[q.id]?.optionId,
             optionIds: answers[q.id]?.optionIds,
+            content: answers[q.id]?.text,
             questionType: q.questionType,
             section: q.section,
             startedAt: questionStartedAt.current,
@@ -364,12 +403,42 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                 }}
                 className="space-y-4"
               >
-                <h2 className={`font-medium leading-relaxed text-[var(--survey-text)] ${BODY_SIZE_CLASSES[fontLevel]}`}>
-                  {globalIndex + 1}. {question.content}
-                  {question.required && <span className="ml-1 text-red-500">*</span>}
-                </h2>
+                <div className="flex items-start justify-between gap-3">
+                  <h2
+                    className={`font-medium leading-relaxed text-[var(--survey-text)] ${BODY_SIZE_CLASSES[fontLevel]}`}
+                  >
+                    {globalIndex + 1}. {question.content}
+                    {question.required && <span className="ml-1 text-red-500">*</span>}
+                  </h2>
+                  {/* isRequired: false (bodit талбар: "required") — TEXTAREA/LONG_TEXT
+                      дээр л screenshot-оор харагдсан "заавал биш" тайлбар. */}
+                  {question.questionType === "LONG_TEXT" && !question.required && (
+                    <span
+                      className={`shrink-0 whitespace-nowrap italic text-[var(--survey-desc)] opacity-70 ${META_SIZE_CLASSES[fontLevel]}`}
+                    >
+                      {HELP_TEXT.optionalHint}
+                    </span>
+                  )}
+                </div>
 
-                {question.questionType === "SINGLE_CHOICE" ? (
+                {/* Төрлөөс үл хамааран (spec-ийн 6-р заалт): question.conditional
+                    truthy үед л энэ мөрийг НЭГ Л УДАА энд render хийнэ — доорх
+                    төрөл бүрийн branch-д давхардуулж бичихгүй. */}
+                {question.conditional && (
+                  <p className={`italic text-[var(--survey-desc)] opacity-70 ${META_SIZE_CLASSES[fontLevel]}`}>
+                    {HELP_TEXT.conditionalHint}
+                  </p>
+                )}
+
+                {isYesNoQuestion(question) ? (
+                  <YesNoButtons
+                    key={question.id}
+                    options={question.options}
+                    selectedId={answers[question.id]?.optionId}
+                    onSelect={(optionId) => handleSelect(question, optionId, indexInBatch)}
+                    fontLevel={fontLevel}
+                  />
+                ) : question.questionType === "SINGLE_CHOICE" ? (
                   <div className="space-y-2.5">
                     {sortByOrder(question.options).map((option) => {
                       const selected = answers[question.id]?.optionId === option.id;
@@ -445,9 +514,38 @@ export default function SurveyQuestionsPage({ params }: { params: Promise<{ shor
                     selectedId={answers[question.id]?.optionId}
                     onSelect={(optionId) => handleSelect(question, optionId, indexInBatch)}
                   />
+                ) : question.questionType === "DROPDOWN" ? (
+                  <DropdownSelect
+                    key={question.id}
+                    options={question.options}
+                    selectedId={answers[question.id]?.optionId}
+                    onSelect={(optionId) => handleSelect(question, optionId, indexInBatch)}
+                    fontLevel={fontLevel}
+                  />
+                ) : TEXT_TYPES.has(question.questionType) ? (
+                  <input
+                    type={question.questionType === "NUMBER_INPUT" ? "number" : "text"}
+                    inputMode={question.questionType === "NUMBER_INPUT" ? "numeric" : undefined}
+                    value={answers[question.id]?.text ?? ""}
+                    onChange={(e) => handleTextChange(question, e.target.value)}
+                    placeholder={HELP_TEXT.textInputPlaceholder}
+                    className={`w-full rounded-lg border px-4 py-2.5 text-[var(--survey-text)] outline-none transition-colors placeholder:text-[var(--survey-desc)] ${
+                      BODY_SIZE_CLASSES[fontLevel]
+                    } ${
+                      answers[question.id]?.text
+                        ? "border-[var(--survey-input-border-filled)] bg-[var(--survey-input-bg-filled)]"
+                        : "border-[var(--survey-input-border)] bg-[var(--survey-input-bg)] focus-visible:border-[var(--survey-input-border-focus)] focus-visible:bg-[var(--survey-input-bg-focus)] focus-visible:ring-2 focus-visible:ring-[var(--survey-input-border-focus)]/40"
+                    }`}
+                  />
+                ) : question.questionType === "LONG_TEXT" ? (
+                  <TextAreaWithCounter
+                    value={answers[question.id]?.text ?? ""}
+                    onChange={(text) => handleTextChange(question, text)}
+                    maxLength={TEXTAREA_DEFAULT_MAX_LENGTH}
+                    fontLevel={fontLevel}
+                  />
                 ) : (
-                  // TODO: DROPDOWN/YES_NO/MATRIX/TEXT гэх мэт бусад асуултын
-                  // төрлийн UI хараахан хийгдээгүй.
+                  // TODO: MATRIX гэх мэт бусад асуултын төрлийн UI хараахан хийгдээгүй.
                   <p className="text-sm italic text-[var(--survey-desc)]">
                     Энэ төрлийн асуултын ({question.questionType}) UI удахгүй нэмэгдэнэ.
                   </p>
@@ -584,10 +682,15 @@ function StarRating({
   );
 }
 
-/** Numeric rating: ижил дизайны хэл — тоон товчнуудын эгнээ, анхны төлөвт
- *  `--survey-star-border` outline (тусдаа numeric-specific өнгө theme-д
- *  байхгүй тул star rating-тай ижил хувьсагчийг дахин ашиглав), сонгогдвол
- *  `--survey-star-active`-аар дүүрнэ. */
+/** Numeric rating (1-5 Likert): screenshot-той тулгаад засав (2026-09-08) —
+ *  өмнө нь дугуй (rounded-full), хоосон/idle үед хоосон дэвсгэртэй байсныг
+ *  ЗАСАВ: одоо тэгш өнцөгт (rounded-lg) 5 товч нэг эгнээнд (flex-wrap-гүй),
+ *  идэвхгүй үедээ `--survey-progress-bg`-ээр (theme-ийн бусад хэсэгт аль
+ *  хэдийн "background-ээс бага зэрэг тодруулсан ил дэвсгэр" болгож ашигладаг
+ *  progress track-ийн өнгө — доорх progress bar-тай ижил хувьсагч) бага зэрэг
+ *  тодруулсан дэвсгэртэй, сонгогдвол SINGLE_CHOICE-ийн сонгогдсон сонголттой
+ *  ИЖИЛ хос хувьсагчаар (`--survey-option-border-active` accent border +
+ *  `--survey-option-bg-active`) тэмдэглэгдэнэ. */
 function NumberRating({
   options,
   selectedId,
@@ -600,7 +703,7 @@ function NumberRating({
   const sorted = sortByOrder(options);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2">
       {sorted.map((option) => {
         const selected = selectedId === option.id;
         return (
@@ -610,16 +713,159 @@ function NumberRating({
             aria-label={option.content}
             aria-pressed={selected}
             onClick={() => onSelect(option.id)}
-            className={`flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-star-active)] ${
+            className={`flex h-10 flex-1 shrink-0 items-center justify-center rounded-lg border text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-option-border-active)] ${
               selected
-                ? "border-[var(--survey-star-active)] bg-[var(--survey-star-active)] text-[var(--survey-btn-text)]"
-                : "border-[var(--survey-star-border)] text-[var(--survey-text)] hover:border-[var(--survey-star-active)]"
+                ? "border-[var(--survey-option-border-active)] bg-[var(--survey-option-bg-active)] text-[var(--survey-option-text-active)]"
+                : "border-[var(--survey-star-border)] bg-[var(--survey-progress-bg)] text-[var(--survey-text)] hover:border-[var(--survey-option-border-active)]"
             }`}
           >
             {option.order}
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** YES_NO (мөн 2-сонголттой SINGLE_CHOICE fallback, дээрх isYesNoQuestion-ийг
+ *  үз): 2 тэгш өнцөгт товч хажуу хажуугаар нь (радио дугуй БИШ). Идэвхгүй
+ *  үед зөвхөн border (дэвсгэргүй/transparent), сонгогдвол theme-ийн accent
+ *  (`--survey-radio-active` — NumberRating-ийн `--survey-option-border-active`-тай
+ *  ижлээр, эдгээр 2 хувьсагч theme бүрд ЯГ ИЖИЛ утгатай, доорх
+ *  survey-theme.ts-ийг үз) өнгөөр бүрэн дүүрнэ. */
+function YesNoButtons({
+  options,
+  selectedId,
+  onSelect,
+  fontLevel,
+}: {
+  options: QuestionOptionDTO[] | undefined;
+  selectedId: number | undefined;
+  onSelect: (optionId: number) => void;
+  fontLevel: FontSizeLevel;
+}) {
+  const sorted = sortByOrder(options);
+
+  return (
+    <div className="flex gap-3">
+      {sorted.map((option) => {
+        const selected = selectedId === option.id;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onSelect(option.id)}
+            className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-center font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--survey-radio-active)] ${
+              BODY_SIZE_CLASSES[fontLevel]
+            } ${
+              selected
+                ? "border-[var(--survey-radio-active)] bg-[var(--survey-radio-active)] text-[var(--survey-btn-text)]"
+                : "border-[var(--survey-star-border)] text-[var(--survey-text)] hover:border-[var(--survey-radio-active)]"
+            }`}
+          >
+            {option.content}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** DROPDOWN: native `<select>` ашиглав (custom dropdown-оос хялбар, native
+ *  popup нь browser өөрөө цагаан фон/харанхуй текстээр render хийдэг тул
+ *  spec-ийн "цагаан фонтой, харанхуй текстэй жагсаалт" шаардлагыг нэмэлт
+ *  ажилгүйгээр хангана). Утга сонгогдоогүй үед "Сонгох" placeholder (хоосон,
+ *  disabled option), баруун талд зөвхөн чимэглэлийн chevron icon
+ *  (`pointer-events-none`, select-ийн NATIVE сум дээр давхарлагдахгүй байхын
+ *  тулд `appearance-none`-оор native сумыг нуув). */
+function DropdownSelect({
+  options,
+  selectedId,
+  onSelect,
+  fontLevel,
+}: {
+  options: QuestionOptionDTO[] | undefined;
+  selectedId: number | undefined;
+  onSelect: (optionId: number) => void;
+  fontLevel: FontSizeLevel;
+}) {
+  const sorted = sortByOrder(options);
+  const filled = selectedId != null;
+
+  return (
+    <div className="relative">
+      <select
+        value={selectedId ?? ""}
+        onChange={(e) => {
+          if (e.target.value) onSelect(Number(e.target.value));
+        }}
+        className={`w-full cursor-pointer appearance-none rounded-lg border px-4 py-2.5 pr-10 text-[var(--survey-text)] outline-none transition-colors ${
+          BODY_SIZE_CLASSES[fontLevel]
+        } ${
+          filled
+            ? "border-[var(--survey-input-border-filled)] bg-[var(--survey-input-bg-filled)]"
+            : "border-[var(--survey-input-border)] bg-[var(--survey-input-bg)] focus-visible:border-[var(--survey-input-border-focus)] focus-visible:bg-[var(--survey-input-bg-focus)] focus-visible:ring-2 focus-visible:ring-[var(--survey-input-border-focus)]/40"
+        }`}
+      >
+        <option value="" disabled className="bg-white text-[#637389]">
+          {HELP_TEXT.dropdownPlaceholder}
+        </option>
+        {sorted.map((option) => (
+          <option key={option.id} value={option.id} className="bg-white text-[#10182B]">
+            {option.content}
+          </option>
+        ))}
+      </select>
+      <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-[var(--survey-desc)]" />
+    </div>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none">
+      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** LONG_TEXT (олон мөрийн чөлөөт бичвэр, ихэвчлэн заавал биш — доод баруун
+ *  буланд тэмдэгтийн тоолуур ("0/500" маягаар). Асуултын гарчгийн "заавал
+ *  биш" тайлбар (HELP_TEXT.optionalHint) дээрх render функц дотор (гарчгийн
+ *  мөрөнд) харагдана, энд биш. */
+function TextAreaWithCounter({
+  value,
+  onChange,
+  maxLength,
+  fontLevel,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+  maxLength: number;
+  fontLevel: FontSizeLevel;
+}) {
+  const filled = value.length > 0;
+
+  return (
+    <div className="relative">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value.slice(0, maxLength))}
+        maxLength={maxLength}
+        rows={4}
+        placeholder={HELP_TEXT.textInputPlaceholder}
+        className={`w-full resize-none rounded-lg border px-4 py-2.5 pb-7 text-[var(--survey-text)] outline-none transition-colors placeholder:text-[var(--survey-desc)] ${
+          BODY_SIZE_CLASSES[fontLevel]
+        } ${
+          filled
+            ? "border-[var(--survey-input-border-filled)] bg-[var(--survey-input-bg-filled)]"
+            : "border-[var(--survey-input-border)] bg-[var(--survey-input-bg)] focus-visible:border-[var(--survey-input-border-focus)] focus-visible:bg-[var(--survey-input-bg-focus)] focus-visible:ring-2 focus-visible:ring-[var(--survey-input-border-focus)]/40"
+        }`}
+      />
+      <span className="absolute right-3 bottom-2 text-xs text-[var(--survey-desc)]">
+        {value.length}/{maxLength}
+      </span>
     </div>
   );
 }

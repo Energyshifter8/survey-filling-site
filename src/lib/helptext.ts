@@ -16,4 +16,8 @@ export const HELP_TEXT = {
   multiChoiceHintPrefix: "Доод тал нь",
   multiChoiceHintMid: "хариулт, дээд тал нь",
   multiChoiceHintSuffix: "хариулт сонгоно уу.",
+  textInputPlaceholder: "Хариулт оруулна уу",
+  dropdownPlaceholder: "Сонгох",
+  optionalHint: "*Алгасах боломжтой",
+  conditionalHint: "*Өмнөх асуултуудын хариулт дээр үндэслэн хариулах шаардлагагүй",
 };

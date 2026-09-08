@@ -154,6 +154,9 @@ export function useSurveyQuestions(shortUrl: string) {
       {
         optionId?: number;
         optionIds?: number[];
+        // TEXT/TEXT_INPUT/NUMBER_INPUT/LONG_TEXT төрлийн чөлөөт бичвэр хариулт
+        // (AnswerChoice.content-ийг үз, src/lib/api/types.ts).
+        content?: string;
         questionType: QuestionWithRule["questionType"];
         section?: QuestionWithRule["section"];
         startedAt: number;
@@ -183,6 +186,7 @@ export function useSurveyQuestions(shortUrl: string) {
               optionId: answer.optionId,
               questionType: answer.questionType,
               duration,
+              content: answer.content,
             },
           ];
       const bucket =
