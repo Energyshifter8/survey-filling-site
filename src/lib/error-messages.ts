@@ -63,3 +63,45 @@ export function getFriendlyErrorMessage(error: unknown, stage: ApiCallStage = "p
   }
   return "Тодорхойгүй алдаа гарлаа. Дахин оролдоно уу.";
 }
+
+/** Recruitment (талент) дуудлагуудын алдааг мессеж болгоно. Survey-ээс ялгаатай
+ *  нь recruitment backend өөрөө ойлгомжтой Монгол мессеж (`{success: false,
+ *  message: "Урилгын холбоос буруу байна"}`) буцаадаг тул (2026-10-27 curl-ээр
+ *  шалгасан) тэрийг нь тэргүүлж харуулна. Харин 5xx-ийн техникийн мессежийг
+ *  ("Invalid compact JWT string" гэх мэт) болон validation-ий ерөнхий
+ *  "Invalid request"-ийг хэрэглэгчид харуулахгүй. */
+export function getTalentErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 0) {
+      return "Холболт тасарлаа. Интернэт холболтоо шалгаад дахин оролдоно уу.";
+    }
+    if (isTokenExpiredError(error)) {
+      return "Үнэлгээнд орох хугацаа дууссан байна. Урилгын холбоосоо дахин нээнэ үү.";
+    }
+    const body = error.body;
+    const backendMessage =
+      body && typeof body === "object" && "message" in body ? (body as { message?: unknown }).message : undefined;
+    if (
+      error.status < 500 &&
+      typeof backendMessage === "string" &&
+      backendMessage &&
+      backendMessage !== "Invalid request"
+    ) {
+      return backendMessage;
+    }
+    if (error.status === 404) {
+      return "Урилга олдсонгүй. Холбоос буруу эсвэл хүчингүй болсон байж болзошгүй.";
+    }
+    if (error.status === 429) {
+      return "Хэт олон хүсэлт илгээгдлээ. Хэдэн минутын дараа дахин оролдоно уу.";
+    }
+    if (error.status >= 500) {
+      return "Систем дээр саатал гарсан байна. Түр хүлээгээд дахин оролдоно уу.";
+    }
+    return `Хүсэлт биелсэнгүй (алдааны код: ${error.status}). Дахин оролдоно уу.`;
+  }
+  if (error instanceof Error) {
+    return error.message === "INVITATION_ID_MISSING" ? "Урилга олдсонгүй." : error.message;
+  }
+  return "Тодорхойгүй алдаа гарлаа. Дахин оролдоно уу.";
+}

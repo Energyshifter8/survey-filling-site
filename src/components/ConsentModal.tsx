@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { CONSENT_BASE_CLAUSES, CONSENT_DETAIL_SECTIONS } from "@/lib/consent-content";
+import {
+  CONSENT_BASE_CLAUSES,
+  CONSENT_DETAIL_SECTIONS,
+  type ConsentClause,
+  type ConsentDetailSection,
+} from "@/lib/consent-content";
 import { manrope } from "@/lib/fonts";
 
 // Бодит reference (survey-staging.mindxplus.com) дээрхтэй тулгаж сайжруулсан:
@@ -27,9 +32,19 @@ interface ConsentModalProps {
   open: boolean;
   onClose: () => void;
   onAccept: () => void;
+  // Талент үнэлгээ өөр агуулгатай (TALENT_CONSENT_* — @/lib/consent-content) —
+  // өгөөгүй бол survey-ийн зөвшөөрөл.
+  clauses?: ConsentClause[];
+  sections?: ConsentDetailSection[];
 }
 
-export default function ConsentModal({ open, onClose, onAccept }: ConsentModalProps) {
+export default function ConsentModal({
+  open,
+  onClose,
+  onAccept,
+  clauses = CONSENT_BASE_CLAUSES,
+  sections = CONSENT_DETAIL_SECTIONS,
+}: ConsentModalProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -55,7 +70,7 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
         <div
           className={`flex w-full shrink-0 flex-col gap-4 overflow-y-auto px-6 tracking-[0.2px] ${expanded ? "h-[500px]" : "h-[284px]"}`}
         >
-          {CONSENT_BASE_CLAUSES.map((clause, i) => (
+          {clauses.map((clause, i) => (
             <ol key={clause.text} className="block w-full shrink-0 list-decimal" start={i + 1}>
               <li className="ms-[21px] text-[14px] font-medium leading-[1.4] text-[#637389]">
                 {clause.text}
@@ -81,7 +96,7 @@ export default function ConsentModal({ open, onClose, onAccept }: ConsentModalPr
               <p className="w-full shrink-0 text-center text-[16px] font-medium leading-5 tracking-[0.2px] text-[#10182B]">
                 ДЭЛГЭРЭНГҮЙ
               </p>
-              {CONSENT_DETAIL_SECTIONS.map((section) => (
+              {sections.map((section) => (
                 <div key={section.heading} className="flex w-full shrink-0 flex-col gap-4">
                   <p className="text-center text-[14px] font-semibold leading-[1.4] tracking-[0.2px] text-[#10182B]">
                     {section.heading}

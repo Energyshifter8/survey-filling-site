@@ -23,18 +23,26 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
+  // Recruitment модуль тусдаа backend руу (NEXT_PUBLIC_RECRUITMENT_API_BASE)
+  // явж болох тул дуудлага бүр base URL-аа override хийж чадна —
+  // src/lib/api/recruitment.ts-ийг үз. Өгөөгүй бол API_BASE_URL.
+  baseUrl?: string;
+  // Хуудас хаагдах (pagehide) үед event-үүдийг алдахгүй илгээхэд — sendBeacon
+  // Authorization header тавьж чаддаггүй тул fetch keepalive ашиглана.
+  keepalive?: boolean;
 }
 
 /** Бүх хүсэлтэд нийтлэг: base URL угтвар, Accept-Language: mn-MN header
  *  (decompiled bundle-ээр баталгаажсан — жинхэнэ frontend-ийн axios interceptor
  *  бүх хүсэлтэд энэ header-ийг нэмдэг). */
 async function doFetch(path: string, options: RequestOptions): Promise<Response> {
-  if (!API_BASE_URL) {
+  const baseUrl = options.baseUrl || API_BASE_URL;
+  if (!baseUrl) {
     throw new ApiError("NEXT_PUBLIC_API_URL тохируулагдаагүй байна", 0);
   }
 
   try {
-    return await fetch(`${API_BASE_URL}${path}`, {
+    return await fetch(`${baseUrl}${path}`, {
       method: options.method ?? "GET",
       headers: {
         "Accept-Language": "mn-MN",
@@ -42,6 +50,7 @@ async function doFetch(path: string, options: RequestOptions): Promise<Response>
         ...options.headers,
       },
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      keepalive: options.keepalive,
     });
   } catch {
     // fetch throws only on network-level failure (offline, DNS, TLS, CORS block).
