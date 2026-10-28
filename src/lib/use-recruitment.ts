@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getRecruitmentInfo, loadInvitation } from "@/lib/api/recruitment";
 import { getBrowserInfo, getBrowserName } from "@/lib/device-info";
+import { TALENT_TEXT } from "@/lib/helptext";
 import { isTalentCompleted, loadTalentState, saveTalentState, type TalentState } from "@/lib/recruitment-session";
 
 /** Урилгын token-оор (load → info) талентийн мэдээллийг ачаална. Нүүр
@@ -49,7 +50,7 @@ export function useTalentInvitation(token: string) {
           browser: getBrowserName(),
         });
         if (fetchedForRef.current !== token) return;
-        if (!info?.sessionId || !info.authorization) throw new Error("Сонгон шалгаруулалтын мэдээлэл дутуу ирлээ.");
+        if (!info?.sessionId || !info.authorization) throw new Error(TALENT_TEXT.infoFailed);
         const next: TalentState = {
           invitationId,
           info,

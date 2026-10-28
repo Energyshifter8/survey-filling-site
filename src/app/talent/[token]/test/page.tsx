@@ -12,6 +12,7 @@ import QuestionField, {
   SELECTABLE_TYPES,
   TEXTAREA_DEFAULT_MAX_LENGTH,
 } from "@/components/QuestionField";
+import { TalentFullscreenOverlays, useTalentFullscreen } from "@/components/TalentFullscreen";
 import {
   TalentCard,
   TalentCompletedScreen,
@@ -28,8 +29,8 @@ import {
   submitCustomQuestionAnswers,
   submitTest,
 } from "@/lib/api/recruitment";
-import type { QuestionAnswerRequest, RecruitmentTestInfo } from "@/lib/api/recruitment-types";
-import type { QuestionWithRule } from "@/lib/api/types";
+import type { QuestionAnswerRequest, RecruitmentTestInfo, TestSubmission } from "@/lib/api/recruitment-types";
+import type { AnswerChoice, QuestionWithRule } from "@/lib/api/types";
 import { getTalentErrorMessage, isTokenExpiredError } from "@/lib/error-messages";
 import { useFontSize } from "@/lib/font-size-context";
 import { manrope } from "@/lib/fonts";
@@ -46,7 +47,7 @@ import {
   type TalentState,
 } from "@/lib/recruitment-session";
 import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
-import { useBrowserEventTracker, useFullscreenGuard, useQuestionEngagement } from "@/lib/talent-tracking";
+import { useBrowserEventTracker, useQuestionEngagement } from "@/lib/talent-tracking";
 
 // Талент үнэлгээний явц: тест бүрд (intro карт → асуултууд → илгээх), дараа нь
 // ажил олгогчийн нэмэлт асуултууд (байвал), эцэст нь "Амжилттай дууслаа".
@@ -71,6 +72,9 @@ interface LoadedSection {
   authorization: string;
   pageSize: number;
   questions: QuestionWithRule[];
+  // Асуулт ачаалагдсан мөч — staging-ийн totalTimeTaken (секунд) нь бодит
+  // frontend-тэй адил эндээс submit хүртэлх хугацаа.
+  loadedAt: number;
 }
 
 function currentStage(state: TalentState): Stage {
@@ -113,6 +117,15 @@ function toAnswerRequest(
   };
 }
 
+/** QuestionAnswerRequest → collector-staging-ийн хуучин AnswerChoice[]
+ *  (TestSubmission.answerList-ийг үз). Survey-ийн submit-тэй адил MULTI_CHOICE-д
+ *  сонгосон option бүрт тусдаа AnswerChoice (ижил questionId-тай) үүсгэнэ. */
+function toAnswerChoices(question: QuestionWithRule, request: QuestionAnswerRequest): AnswerChoice[] {
+  const base = { questionId: request.questionId, questionType: question.questionType, duration: request.duration };
+  if (request.optionIds?.length) return request.optionIds.map((optionId) => ({ ...base, optionId }));
+  return [{ ...base, ...(request.textAnswer ? { content: request.textAnswer } : {}) }];
+}
+
 export default function TalentTestPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
@@ -128,7 +141,6 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
   const [batchIndex, setBatchIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, LocalAnswer>>({});
   const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const autoAdvanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -154,14 +166,21 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
     authorization: talent?.info.authorization,
     testAnswerId: section?.id,
   });
-  const fullscreen = useFullscreenGuard(inQuestions, () => {
-    tracker.track("FULLSCREEN_EXIT");
-    void tracker.flush();
-  });
+  const fullscreen = useTalentFullscreen();
   const engagement = useQuestionEngagement(
     currentBatch.map((question) => question.id),
-    inQuestions && !fullscreen.required,
+    inQuestions && !fullscreen.blocking,
   );
+
+  // Бодит frontend-тэй адил: FULLSCREEN_EXIT-ийг зөвхөн асуулт бөглөж байх үед бүртгэнэ.
+  const { track, flush } = tracker;
+  useEffect(() => {
+    if (!inQuestions) return;
+    return fullscreen.onExit(() => {
+      track("FULLSCREEN_EXIT");
+      void flush();
+    });
+  }, [inQuestions, fullscreen.onExit, track, flush]);
 
   // Эхлээгүй/мэдээлэлгүй үед (жишээ нь /test URL-ыг шууд нээсэн) нүүр хуудас
   // руу буцаана — тэнд урилгыг load → info-гоор эхнээс нь ачаална.
@@ -239,9 +258,9 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
   async function startSection() {
     if (!talent || !stage || stage.kind === "done" || busy) return;
     setBusy(true);
-    setActionError(null);
     try {
       if (!(await isTokenValid(talent.info.authorization))) {
+        toast.error(TALENT_TEXT.tokenInvalid);
         handleExpired();
         return;
       }
@@ -255,9 +274,10 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
           authorization: dto.authorization || talent.info.authorization,
           pageSize: dto.pageSize && dto.pageSize > 0 ? dto.pageSize : 1,
           questions: sortByQuestionOrder(dto.question),
+          loadedAt: Date.now(),
         };
         if (loaded.questions.length === 0) {
-          setActionError(TALENT_TEXT.noQuestions);
+          toast.error(TALENT_TEXT.noQuestions);
           return;
         }
       } else {
@@ -270,6 +290,7 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
           // Эхний ба төгсгөлийн бүлгийг тус тусад нь эрэмбэлээд залгана
           // (survey-ийн customQuestionFirst/Last-тай ижил шалтгаан — use-survey.ts).
           questions: [...sortByQuestionOrder(dto.startQuestions), ...sortByQuestionOrder(dto.endQuestions)],
+          loadedAt: Date.now(),
         };
         if (loaded.questions.length === 0) {
           // Нэмэлт асуулт байхгүй — бодит frontend-тэй адил шууд дуусгана.
@@ -291,7 +312,9 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
         handleExpired();
         return;
       }
-      setActionError(getTalentErrorMessage(err));
+      toast.error(
+        getTalentErrorMessage(err, stage.kind === "test" ? TALENT_TEXT.testLoadFailed : TALENT_TEXT.customLoadFailed),
+      );
     } finally {
       setBusy(false);
     }
@@ -300,17 +323,19 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
   async function submitSection() {
     if (!talent || !section || busy) return;
     setBusy(true);
-    setActionError(null);
     try {
-      const submission = {
-        id: section.id,
-        answers: section.questions.map((question) =>
-          toAnswerRequest(
-            question,
-            answers[question.id],
-            engagement.metricsForSubmit(question.id, hasAnswer(answers[question.id])),
-          ),
+      const requests = section.questions.map((question) =>
+        toAnswerRequest(
+          question,
+          answers[question.id],
+          engagement.metricsForSubmit(question.id, hasAnswer(answers[question.id])),
         ),
+      );
+      const submission: TestSubmission = {
+        id: section.id,
+        answers: requests,
+        answerList: section.questions.flatMap((question, index) => toAnswerChoices(question, requests[index])),
+        totalTimeTaken: Math.floor((Date.now() - section.loadedAt) / 1000),
       };
       // Бодит frontend-тэй адил: submit-ээс өмнө үлдсэн event-үүдийг илгээнэ.
       await tracker.flush({ force: true });
@@ -333,7 +358,12 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
         handleExpired();
         return;
       }
-      setActionError(getTalentErrorMessage(err));
+      toast.error(
+        getTalentErrorMessage(
+          err,
+          section.stageKey === "custom" ? TALENT_TEXT.customSubmitFailed : TALENT_TEXT.testSubmitFailed,
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -434,7 +464,6 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
             <p className="mt-5 border-t border-[#E4E8EF] pt-5 text-base text-[#10182B]">
               {stage.kind === "test" ? TALENT_TEXT.testDescription : TALENT_TEXT.customDescription}
             </p>
-            {actionError && <p className="mt-4 text-sm text-red-600">{actionError}</p>}
             <div className="mt-10 flex justify-end">
               <TalentPrimaryButton disabled={busy} onClick={startSection}>
                 {busy ? TALENT_TEXT.loadingButton : TALENT_TEXT.continueButton}
@@ -442,6 +471,7 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
             </div>
           </TalentCard>
         </div>
+        <TalentFullscreenOverlays />
       </main>
     );
   }
@@ -488,8 +518,6 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
           ))}
         </div>
 
-        {actionError && <p className="text-sm text-red-600">{actionError}</p>}
-
         <div className="flex items-center gap-3">
           <TalentSecondaryButton disabled={batchIndex === 0 || busy} onClick={handlePrev}>
             {TALENT_TEXT.backButton}
@@ -500,22 +528,7 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
         </div>
       </div>
 
-      {fullscreen.required && (
-        <div
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="fullscreenTitle"
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 px-5"
-        >
-          <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-xl bg-white p-6 text-center">
-            <h2 id="fullscreenTitle" className="text-lg font-semibold text-red-600">
-              {TALENT_TEXT.fullscreenTitle}
-            </h2>
-            <p className="text-sm text-[#637389]">{TALENT_TEXT.fullscreenDescription}</p>
-            <TalentPrimaryButton onClick={fullscreen.enter}>{TALENT_TEXT.fullscreenButton}</TalentPrimaryButton>
-          </div>
-        </div>
-      )}
+      <TalentFullscreenOverlays />
 
       <Dialog open={confirmOpen} onOpenChange={(open) => !busy && setConfirmOpen(open)}>
         <DialogContent
@@ -526,7 +539,6 @@ export default function TalentTestPage({ params }: { params: Promise<{ token: st
           <DialogDescription className="text-sm text-[#637389]">
             {TALENT_TEXT.customConfirmDescription}
           </DialogDescription>
-          {actionError && <p className="text-sm text-red-600">{actionError}</p>}
           <div className="flex justify-end gap-2">
             <DialogClose
               disabled={busy}

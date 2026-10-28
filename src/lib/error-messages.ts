@@ -69,8 +69,11 @@ export function getFriendlyErrorMessage(error: unknown, stage: ApiCallStage = "p
  *  message: "Урилгын холбоос буруу байна"}`) буцаадаг тул (2026-10-27 curl-ээр
  *  шалгасан) тэрийг нь тэргүүлж харуулна. Харин 5xx-ийн техникийн мессежийг
  *  ("Invalid compact JWT string" гэх мэт) болон validation-ий ерөнхий
- *  "Invalid request"-ийг хэрэглэгчид харуулахгүй. */
-export function getTalentErrorMessage(error: unknown): string {
+ *  "Invalid request"-ийг хэрэглэгчид харуулахгүй.
+ *
+ *  `fallback` — backend мессеж ирээгүй 5xx/бусад алдаанд харуулах алхмын
+ *  мессеж (бодит frontend-тэй адил "Тест авахад алдаа гарлаа" гэх мэт). */
+export function getTalentErrorMessage(error: unknown, fallback?: string): string {
   if (error instanceof ApiError) {
     if (error.status === 0) {
       return "Холболт тасарлаа. Интернэт холболтоо шалгаад дахин оролдоно уу.";
@@ -95,6 +98,7 @@ export function getTalentErrorMessage(error: unknown): string {
     if (error.status === 429) {
       return "Хэт олон хүсэлт илгээгдлээ. Хэдэн минутын дараа дахин оролдоно уу.";
     }
+    if (fallback) return fallback;
     if (error.status >= 500) {
       return "Систем дээр саатал гарсан байна. Түр хүлээгээд дахин оролдоно уу.";
     }
@@ -103,5 +107,14 @@ export function getTalentErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message === "INVITATION_ID_MISSING" ? "Урилга олдсонгүй." : error.message;
   }
-  return "Тодорхойгүй алдаа гарлаа. Дахин оролдоно уу.";
+  return fallback ?? "Тодорхойгүй алдаа гарлаа. Дахин оролдоно уу.";
+}
+
+/** Урилга ачаалах (load/info) алдаа түр зуурын эсэх — бодит frontend сүлжээ/
+ *  систем/тодорхойгүй алдаанд "Шинэчлэх" товчтой дэлгэц харуулдаг; харин
+ *  backend-ийн тайлбартай (<500) алдаа ба олдоогүй урилгад (404) дахин
+ *  ачаалах нь тус болохгүй тул товч харуулахгүй. */
+export function isRetryableTalentError(error: unknown): boolean {
+  if (error instanceof ApiError) return error.status === 0 || error.status === 429 || error.status >= 500;
+  return !(error instanceof Error && error.message === "INVITATION_ID_MISSING");
 }

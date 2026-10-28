@@ -5,16 +5,16 @@ import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import { BODY_SIZE_CLASSES, META_SIZE_CLASSES } from "@/components/FontSizeToggle";
+import { TalentFullscreenOverlays, useTalentFullscreen } from "@/components/TalentFullscreen";
 import { TalentCard, TalentCompletedScreen, TalentPrimaryButton, TalentStatusScreen } from "@/components/TalentScreens";
 import type { RecruitmentDTO } from "@/lib/api/recruitment-types";
 import { TALENT_CONSENT_BASE_CLAUSES, TALENT_CONSENT_DETAIL_SECTIONS } from "@/lib/consent-content";
-import { getTalentErrorMessage } from "@/lib/error-messages";
+import { getTalentErrorMessage, isRetryableTalentError } from "@/lib/error-messages";
 import { useFontSize } from "@/lib/font-size-context";
 import { manrope } from "@/lib/fonts";
 import { TALENT_TEXT } from "@/lib/helptext";
 import { saveTalentState } from "@/lib/recruitment-session";
 import { resolveSurveyTheme, surveyThemeCssVars } from "@/lib/survey-theme";
-import { requestFullscreenSafely } from "@/lib/talent-tracking";
 import { useTalentInvitation } from "@/lib/use-recruitment";
 
 // Талент урилгын нүүр: welcome → талент баталгаажуулах (овог/нэр + зөвшөөрөл)
@@ -66,6 +66,7 @@ export default function TalentLandingPage({ params }: { params: Promise<{ token:
   const router = useRouter();
   const { state, completed, loading, error } = useTalentInvitation(token);
   const { level: fontLevel } = useFontSize();
+  const fullscreen = useTalentFullscreen();
 
   const [step, setStep] = useState<Step>("welcome");
   const [pageIndex, setPageIndex] = useState(0);
@@ -87,8 +88,18 @@ export default function TalentLandingPage({ params }: { params: Promise<{ token:
 
   if (error) {
     // load/info — Bearer хараахан байхгүй үе; backend-ийн мессеж ("Урилгын
-    // холбоос буруу байна" гэх мэт) байвал тэрийг нь харуулна.
-    return <TalentStatusScreen>{getTalentErrorMessage(error)}</TalentStatusScreen>;
+    // холбоос буруу байна" гэх мэт) байвал тэрийг нь харуулна. Сүлжээ/системийн
+    // алдаанд бодит frontend-тэй адил хуудсыг дахин ачаалах товч гаргана.
+    return (
+      <TalentStatusScreen>
+        <p>{getTalentErrorMessage(error)}</p>
+        {isRetryableTalentError(error) && (
+          <TalentPrimaryButton className="mt-6" onClick={() => window.location.reload()}>
+            {TALENT_TEXT.refreshButton}
+          </TalentPrimaryButton>
+        )}
+      </TalentStatusScreen>
+    );
   }
 
   if (completed) return <TalentCompletedScreen />;
@@ -133,17 +144,24 @@ export default function TalentLandingPage({ params }: { params: Promise<{ token:
     }
   }
 
+  // Welcome, мэдээллийн хуудас, бэлэн байдлын товчнууд бодит frontend-тэй адил
+  // fullscreen унтраастай бол асаана (товч дарсан gesture дотроос дуудах ёстой).
+  function handleWelcomeStart() {
+    fullscreen.ensure();
+    setStep("verify");
+  }
+
   function handlePageNext() {
+    fullscreen.ensure();
     if (pageIndex < pages.length - 1) setPageIndex(pageIndex + 1);
     else setStep("readiness");
   }
 
-  async function handleStart() {
+  function handleStart() {
     if (!state || starting) return;
     setStarting(true);
-    // Fullscreen-ийг товч дарсан gesture дотроос (ямар нэг await-аас өмнө)
-    // асаах ёстой — /test руу client-side шилжихэд fullscreen хэвээр үлдэнэ.
-    await requestFullscreenSafely();
+    // /test руу client-side шилжихэд fullscreen хэвээр үлдэнэ.
+    fullscreen.ensure();
     saveTalentState(token, { ...state, started: true });
     router.push(`/talent/${token}/test`);
   }
@@ -159,7 +177,7 @@ export default function TalentLandingPage({ params }: { params: Promise<{ token:
             <h1 className="text-2xl font-bold text-[#10182B] md:text-3xl">{TALENT_TEXT.welcomeTitle}</h1>
             <p className={`text-[#637389] ${BODY_SIZE_CLASSES[fontLevel]}`}>{TALENT_TEXT.welcomeDescription}</p>
           </div>
-          <TalentPrimaryButton onClick={() => setStep("verify")}>{TALENT_TEXT.startButton}</TalentPrimaryButton>
+          <TalentPrimaryButton onClick={handleWelcomeStart}>{TALENT_TEXT.startButton}</TalentPrimaryButton>
         </TalentCard>
       )}
 
@@ -308,6 +326,7 @@ export default function TalentLandingPage({ params }: { params: Promise<{ token:
         clauses={TALENT_CONSENT_BASE_CLAUSES}
         sections={TALENT_CONSENT_DETAIL_SECTIONS}
       />
+      <TalentFullscreenOverlays />
     </main>
   );
 }

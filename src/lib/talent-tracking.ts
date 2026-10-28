@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { sendBrowserEvents } from "@/lib/api/recruitment";
 import type { BrowserEvent, BrowserEventType, QuestionAnswerRequest } from "@/lib/api/recruitment-types";
 
@@ -137,73 +137,6 @@ export function useBrowserEventTracker({
   }, [active, track, flush]);
 
   return { track, flush };
-}
-
-/** Fullscreen шаардлага (бодит frontend-тэй адил): `active` үед fullscreen биш
- *  бол `required` true болж, page overlay харуулна. Fullscreen-ийг зөвхөн
- *  хэрэглэгчийн товч дарсан gesture дотроос асааж болдог тул `enter`-ийг
- *  товчны onClick-оос дуудна. iPhone Safari гэх мэт document fullscreen-ийг
- *  огт дэмждэггүй орчинд (`fullscreenEnabled` false) шаардлагагүй гэж үзнэ. */
-export function useFullscreenGuard(active: boolean, onExit: () => void) {
-  // useSyncExternalStore-ийн server snapshot (fullscreen: true, supported: false)
-  // нь hydration-ийн эхний render-т overlay харуулахгүй байлгана — client дээр
-  // бодит утга руу дараа нь шилжинэ.
-  const isFullscreen = useSyncExternalStore(
-    subscribeFullscreen,
-    () => document.fullscreenElement != null,
-    () => true,
-  );
-  const supported = useSyncExternalStore(
-    subscribeNever,
-    () => document.fullscreenEnabled === true,
-    () => false,
-  );
-
-  const onExitRef = useRef(onExit);
-  useEffect(() => {
-    onExitRef.current = onExit;
-  }, [onExit]);
-
-  useEffect(() => {
-    if (!active) return;
-    const onChange = () => {
-      if (document.fullscreenElement == null) onExitRef.current();
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, [active]);
-
-  const enter = useCallback(async () => {
-    try {
-      await document.documentElement.requestFullscreen();
-    } catch {
-      // Хэрэглэгч/browser татгалзсан — overlay хэвээр үлдэж дахин оролдох боломжтой.
-    }
-  }, []);
-
-  return { required: active && supported && !isFullscreen, enter };
-}
-
-function subscribeFullscreen(onChange: () => void) {
-  document.addEventListener("fullscreenchange", onChange);
-  return () => document.removeEventListener("fullscreenchange", onChange);
-}
-
-function subscribeNever() {
-  return () => {};
-}
-
-/** Fullscreen-ийг хэрэглэгчийн gesture (товч дарах) дотроос асаана — бэлэн
- *  байдлын дэлгэцээс /test руу шилжихийн өмнө дуудна. Дэмжихгүй/татгалзсан
- *  бол чимээгүй өнгөрнө (/test дээрх useFullscreenGuard дахин асууна). */
-export async function requestFullscreenSafely() {
-  try {
-    if (document.fullscreenEnabled && !document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-    }
-  } catch {
-    // татгалзсан — /test дээрх overlay дахин асууна
-  }
 }
 
 interface EngagementMetrics {

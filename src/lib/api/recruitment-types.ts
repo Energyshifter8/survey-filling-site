@@ -6,12 +6,12 @@
 // шалгасан): staging `{ id, answerList: AnswerChoice[], totalTimeTaken }`
 // хүлээдэг (survey-staging.mindxplus.com/talent/[token]-ийн бодит bundle ч
 // үүнийг илгээдэг), dev backend `{ id, answers: QuestionAnswerRequest[] }`.
-// Бид dev backend-ийн (шинэ) гэрээг дагана — доорх TestSubmission-ийг үз.
+// Шилжилтийн үед хоёуланг нь нэг body-д илгээнэ — доорх TestSubmission-ийг үз.
 //
 // QuestionWithRule, DesignDTO, PageDTO нь survey-тэй ижил schema тул
 // @/lib/api/types-аас дахин ашиглана.
 
-import type { QuestionWithRule, SurveyDesignDTO, SurveyPageDTO } from "@/lib/api/types";
+import type { AnswerChoice, QuestionWithRule, SurveyDesignDTO, SurveyPageDTO } from "@/lib/api/types";
 
 /** Recruitment endpoint-уудын ихэнх нь HTTP 200 дотор ийм wrapper буцаадаг —
  *  алдаа ч гэсэн (жишээ нь буруу token: `{status: 404, message: "Урилгын
@@ -107,10 +107,18 @@ export interface QuestionAnswerRequest {
 
 /** Swagger: TestSubmission — qn/submit болон cq/submit хоёулаа. "required":
  *  ["answers", "id"], `answers` хоосон байж болохгүй (dev backend 400
- *  "Хоосон байж болохгүй" буцаадгийг шалгасан). */
+ *  "Хоосон байж болохгүй" буцаадгийг шалгасан).
+ *
+ *  `answerList`/`totalTimeTaken` — collector-staging-ийн хуучин гэрээ
+ *  (`answerList` хоосон бол 400 "Хоосон байж болохгүй", 2026-10-28 бодит
+ *  урилгаар шалгасан). Spring Jackson танихгүй талбарыг үл тоодог тул хоёр
+ *  гэрээг зэрэг илгээхэд backend бүр өөрийнхөө талбарыг л уншина. Staging
+ *  шинэ гэрээнд шилжмэгц эдгээрийг устгана. */
 export interface TestSubmission {
   id: string;
   answers: QuestionAnswerRequest[];
+  answerList: AnswerChoice[];
+  totalTimeTaken: number;
 }
 
 /** Swagger: BrowserEvent.eventType-ийн бүрэн enum. */
